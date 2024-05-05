@@ -98,6 +98,7 @@ pub struct Inheritance {
     pub indices: Vec<(Box<str>, usize)>,
     pub inherits: Vec<Vec<usize>>,
 }
+#[allow(dead_code)]
 impl Inheritance {
     pub fn new() -> Self {
         Self {
