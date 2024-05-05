@@ -143,25 +143,28 @@ fn main() {
             load, open_workspace, ws_files, ws_name, ws_mod_data, ws_str_index, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries
         ])
         .register_asynchronous_uri_scheme_protocol("raw", |app, req, resp| {
-            fn get_img(ws: State<'_, WSLock>, uri_path: &str) -> anyhow::Result<Option<Vec<u8>>> {
+            #[inline]
+            fn get_img(ws: WSLock, uri_path: &str) -> anyhow::Result<Option<Vec<u8>>> {
                 let Some((s_id, path)) = uri_path[1..].split_once('/') else { return Ok(None) };
-                let Ok(id) = uuid::Uuid::try_parse(s_id) else { return Ok(None) };
+                let Ok(id) = Uuid::try_parse(s_id) else { return Ok(None) };
                 let Ok(f) = ws.locking(|ws| ws.entry_path(id)) else { return Ok(None) };
                 let mut zip = ext::zip_open(f)?;
                 let data = extract::get_img_data(&mut zip, path);
                 Ok(data)
             }
 
-            let ws = app.state::<WSLock>();
+            let ws = app.state::<WSLock>().inner().clone();
             let rb = Response::builder();
-            resp.respond(match get_img(ws, req.uri().path()) {
-                Ok(Some(data)) => rb.header("Content-Length", data.len()).body(data),
-                Ok(None) => rb.status(404).body(vec![]),
-                Err(e) => {
-                    eprintln!("{e}");
-                    rb.status(500).body(vec![])
-                }
-            }.unwrap())
+            async_runtime::spawn(async move {
+                resp.respond(match get_img(ws, req.uri().path()) {
+                    Ok(Some(data)) => rb.header("Content-Length", data.len()).body(data),
+                    Ok(None) => rb.status(404).body(vec![]),
+                    Err(e) => {
+                        eprintln!("{e}");
+                        rb.status(500).body(vec![])
+                    }
+                }.unwrap())
+            });
         })
         .run(generate_context!())
         .expect("error while running tauri application");
