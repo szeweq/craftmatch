@@ -10,7 +10,7 @@ mod mc;
 mod slice;
 
 use std::sync::Arc;
-use tauri::{async_runtime, command, generate_context, generate_handler, http::Response, Manager, State};
+use tauri::{async_runtime, command, generate_context, generate_handler, http::{Request, Response}, AppHandle, Manager, State};
 use uuid::Uuid;
 use workspace::{WSLock, WSMode};
 use slice::BinSearchExt;
@@ -142,32 +142,36 @@ fn main() {
         .invoke_handler(generate_handler![
             load, open_workspace, ws_files, ws_name, ws_mod_data, ws_str_index, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries
         ])
-        .register_asynchronous_uri_scheme_protocol("raw", |app, req, resp| {
-            #[inline]
-            fn get_img(ws: WSLock, uri_path: &str) -> anyhow::Result<Option<Vec<u8>>> {
-                let Some((s_id, path)) = uri_path[1..].split_once('/') else { return Ok(None) };
-                let Ok(id) = Uuid::try_parse(s_id) else { return Ok(None) };
-                let Ok(f) = ws.locking(|ws| ws.entry_path(id)) else { return Ok(None) };
-                let mut zip = ext::zip_open(f)?;
-                let data = extract::get_img_data(&mut zip, path);
-                Ok(data)
-            }
-
-            let now = std::time::Instant::now();
-            let ws = app.state::<WSLock>().inner().clone();
-            async_runtime::spawn(async move {
-                let rb = Response::builder();
-                resp.respond(match get_img(ws, req.uri().path()) {
-                    Ok(Some( data)) => rb.header("Content-Length", data.len()).body(data),
-                    Ok(None) => rb.status(404).body(vec![]),
-                    Err(e) => {
-                        eprintln!("{e}");
-                        rb.status(500).body(vec![])
-                    }
-                }.unwrap());
-                println!("Fetching image took {:?} -> {}", now.elapsed(), req.uri().path());
-            });
-        })
+        .register_asynchronous_uri_scheme_protocol("raw", raw_protocol)
         .run(generate_context!())
         .expect("error while running tauri application");
+}
+
+fn raw_protocol(app: &AppHandle, req: Request<Vec<u8>>, resp: UriSchemeResponder) {
+    #[inline]
+    fn get_img(ws: WSLock, uri_path: &str) -> Option<anyhow::Result<Vec<u8>>> {
+        let (s_id, path) = uri_path[1..].split_once('/')?;
+        let id = Uuid::try_parse(s_id).ok()?;
+        let f = ws.locking(|ws| ws.entry_path(id)).ok()?;
+        let mut zip = match ext::zip_open(f) {
+            Ok(x) => x,
+            Err(e) => { return Some(Err(e)) }
+        };
+        extract::get_img_data(&mut zip, path).map(Ok)
+    }
+
+    let now = std::time::Instant::now();
+    let ws = app.state::<WSLock>().inner().clone();
+    async_runtime::spawn(async move {
+        let rb = Response::builder();
+        resp.respond(match get_img(ws, req.uri().path()) {
+            Some(Ok(data)) => rb.header("Content-Length", data.len()).body(data),
+            None => rb.status(404).body(vec![]),
+            Some(Err(e)) => {
+                eprintln!("{e}");
+                rb.status(500).body(vec![])
+            }
+        }.unwrap());
+        println!("Fetching image took {:?} -> {}", now.elapsed(), req.uri().path());
+    });
 }
