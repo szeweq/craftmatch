@@ -1,0 +1,38 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, sans-serif;
+  font-optical-sizing: auto;
+  font-feature-settings: 'liga' 1, 'calt' 1;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+
+  color: #fff;
+  background-color: #2f2f2f;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+
+  --c-ring: #396cd8;
+  --c-bg1: #2f2f2f;
+  --c-bg2: #161616;
+  --s-aside: 4rem;
+}
+
+@font-face {
+  font-family: Inter;
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/font/InterVariable.woff2") format("woff2");
+}
+@font-face {
+  font-family: Inter;
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/font/InterVariable-Italic.woff2") format("woff2");
+}

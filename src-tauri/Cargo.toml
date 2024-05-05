@@ -1,0 +1,31 @@
+[package]
+name = "craftmatch"
+version = "0.0.0"
+description = "A Tauri App"
+authors = ["you"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[build-dependencies]
+tauri-build = {version = "2.0.0-beta", features = [] }
+
+[dependencies]
+tauri = {version = "2.0.0-beta", features = [] }
+serde = "1.0"
+serde_json = "1.0"
+rfd = "0.14"
+zip = {version = "1.1", default-features = false, features = ["deflate"] }
+toml = {version = "0.8", default-features = false, features = ["parse"] }
+anyhow = "1.0"
+base64 = "0.22"
+rayon = "1.10"
+cafebabe = "0.6.1"
+state = "0.6"
+uuid = {version = "1.8", features = ["v7", "serde"] }
+byteorder = "1.5"
+bytes = "1.6"
+
+[lints.clippy]
+nursery = "warn"
+#pedantic = "warn"

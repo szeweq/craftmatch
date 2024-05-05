@@ -1,0 +1,195 @@
+use std::{collections::HashMap, io::{Read, Seek}, path::Path};
+
+use cafebabe::{attributes::{AnnotationElement, AnnotationElementValue, AttributeData}, constant_pool::{ConstantPoolItem, LiteralConstant}};
+use serde::Serialize;
+
+use crate::ext;
+
+fn parse_class_safe(b: &[u8], bytecode: bool) -> anyhow::Result<cafebabe::ClassFile<'_>> {
+    let now = std::time::Instant::now();
+    match cafebabe::parse_class_with_options(b, cafebabe::ParseOptions::default().parse_bytecode(bytecode)) {
+        Ok(x) => {
+            println!("Parsing took {:?} -> {}", now.elapsed(), x.this_class);
+            Ok(x)
+        }
+        Err(e) => {
+            println!("Parsing failed (in {:?}): {:?}", now.elapsed(), e);
+            Err(anyhow::Error::from(e))
+        }
+    }
+}
+
+#[inline]
+fn zip_each_class<F>(zip: &mut zip::ZipArchive<impl Read + Seek>, bytecode: bool, mut f: F) -> anyhow::Result<()>
+where for<'a> F: FnMut(&'a cafebabe::ClassFile<'a>) -> anyhow::Result<()> {
+    ext::zip_each_by_extension(zip, ext::Extension::Class, |mut zf| {
+        let mut buf = Vec::new();
+        zf.read_to_end(&mut buf)?;
+        f(&parse_class_safe(&buf, bytecode)?)
+    })
+}
+
+// #[inline]
+// fn zip_find_class<F, T>(zip: &mut zip::ZipArchive<impl Read + Seek>, bytecode: bool, mut f: F) -> anyhow::Result<Option<T>>
+// where for<'a> F: FnMut(&'a cafebabe::ClassFile<'a>) -> anyhow::Result<Option<T>> {
+//     ext::zip_find_by_extension(zip, ext::Extension::Class, |mut zf| {
+//         let mut buf = Vec::new();
+//         zf.read_to_end(&mut buf)?;
+//         f(&parse_class_safe(&buf, bytecode)?)
+//     })
+// }
+
+pub fn gather_inheritance(p: impl AsRef<Path>) -> anyhow::Result<ext::Inheritance> {
+    let mut zip = ext::zip_open(p)?;
+    let mut inh = ext::Inheritance::new();
+    zip_each_class(&mut zip, false, |cf| {
+        let ci = inh.find(&cf.this_class);
+        if let Some(ref s) = cf.super_class {
+            if s != "java/lang/Object" {
+                inh.add_inherit(ci, s);
+            }
+        }
+        for cif in &cf.interfaces {
+            inh.add_inherit(ci, cif);
+        }
+        Ok(())
+    })?;
+    Ok(inh)
+}
+
+#[derive(Serialize)]
+pub struct Complexity(HashMap<Box<str>, ClassCounting>);
+
+#[derive(Clone, Serialize)]
+pub struct ClassCounting {
+    total: usize,
+    fields: usize,
+    methods: usize,
+    code: Vec<(Box<str>, usize)>
+}
+impl Complexity {
+    pub fn new() -> Self {
+        Self(HashMap::new())
+    }
+    fn fill_from<'a>(&mut self, cf: &'a cafebabe::ClassFile<'a>) {
+        let s = &cf.this_class;
+        if !self.0.contains_key(s.as_ref()) {
+            let mut total = cf.fields.len() + cf.methods.len();
+            let mut v = vec![];
+            for m in &cf.methods {
+                let Some(mcode) = m.attributes.iter().find_map(|a| {
+                    if let cafebabe::attributes::AttributeData::Code(code) = &a.data {
+                        Some(code)
+                    } else {
+                        None
+                    }
+                }) else { continue; };
+                let Some(bc) = &mcode.bytecode else { continue; };
+                let mn = m.name.replacen("lambda$", "λ ", 1);
+                let x = &m.descriptor;
+                total += bc.opcodes.len();
+                v.push(((format!("{mn} {x}")).into_boxed_str(), bc.opcodes.len()));
+            }
+            if (s.ends_with("package-info") || s.ends_with("module-info")) && v.is_empty() { return; }
+            self.0.insert(s.to_string().into_boxed_str(), ClassCounting { total, fields: cf.fields.len(), methods: cf.methods.len(), code: v });
+        }
+    }
+    pub fn extend(&mut self, other: &Self) {
+        self.0.extend(other.0.iter().map(|(k, v)| (k.to_string().into_boxed_str(), v.clone())));
+    }
+}
+impl <R> FromIterator<R> for Complexity where R: AsRef<Self> {
+    fn from_iter<T: IntoIterator<Item = R>>(iter: T) -> Self {
+        iter.into_iter().fold(Self::new(), |mut acc, x| { acc.extend(x.as_ref()); acc })
+    }
+}
+
+pub fn gather_complexity(p: impl AsRef<Path>) -> anyhow::Result<Complexity> {
+    let mut zip = ext::zip_open(p)?;
+    let mut cmplx = Complexity(HashMap::new());
+    zip_each_class(&mut zip, true, |cf| {
+        cmplx.fill_from(cf);
+        Ok(())
+    })?;
+    Ok(cmplx)
+}
+
+fn find_annotation<'a>(cf: &'a cafebabe::ClassFile<'a>, name: &'a str) -> Option<&'a cafebabe::attributes::Annotation<'a>> {
+    cf.attributes.iter().find_map(|a| {
+        match &a.data {
+            AttributeData::RuntimeInvisibleAnnotations(an) => an,
+            AttributeData::RuntimeVisibleAnnotations(an) => an,
+            _ => { return None }
+        }.iter().find(|a| a.type_descriptor == name)
+    })
+}
+
+pub struct StrIndex {
+    pub classes: Vec<Box<str>>,
+    pub strings: HashMap<Box<str>, Vec<usize>>
+}
+
+type Slice<T> = Box<[T]>;
+
+#[derive(Serialize, Clone)]
+pub struct StrIndexMapped {
+    pub classes: Slice<Box<str>>,
+    pub strings: Slice<(Box<str>, Slice<usize>)>
+}
+impl From<StrIndex> for StrIndexMapped {
+    fn from(x: StrIndex) -> Self {
+        let classes = x.classes.into_boxed_slice();
+        let mut strings = x.strings.into_iter().map(|(k, v)| (k, v.into_boxed_slice())).collect::<Box<_>>();
+        strings.sort();
+        Self { classes, strings }
+    }
+}
+
+pub fn gather_str_index(p: impl AsRef<Path>) -> anyhow::Result<StrIndexMapped> {
+    let mut zip = ext::zip_open(p)?;
+    let mut sidx = StrIndex { classes: vec![], strings: HashMap::new() };
+    zip_each_class(&mut zip, true, |cf| {
+        let name = cf.this_class.to_string().into_boxed_str();
+        let sz = sidx.classes.len();
+        sidx.classes.push(name);
+        for cp in cf.constantpool_iter() {
+            if let ConstantPoolItem::LiteralConstant(LiteralConstant::String(x)) = cp {
+                sidx.strings.entry(x.to_string().into_boxed_str()).or_default().push(sz);
+            }
+        }
+        Ok(())
+    })?;
+    Ok(sidx.into())
+}
+
+#[derive(Serialize)]
+pub struct ModEntries {
+    pub classes: Box<[Box<str>]>
+}
+
+pub fn scan_forge_mod_entries(zipfile: &mut zip::ZipArchive<impl Read + Seek>, names: &[&str]) -> anyhow::Result<Box<[Box<str>]>> {
+    let mut found = vec![None; names.len()];
+    zip_each_class(zipfile, false, |cf| {
+        let Some(a) = find_annotation(cf, "Lnet/minecraftforge/fml/common/Mod;") else { return Ok(()) };
+        for e in &a.elements {
+            if let AnnotationElement{name: x, value: AnnotationElementValue::StringConstant(s)} = e {
+                if x != "value" { continue; }
+                if let Some(i) = names.iter().position(|n| *n == *s) {
+                    found[i] = Some(cf.this_class.to_string().into_boxed_str());
+                    break;
+                }
+            }
+        }
+        Ok(())
+    })?;
+    Ok(found.into_iter().flatten().collect())
+}
+
+pub fn scan_fabric_mod_entry(zipfile: &mut zip::ZipArchive<impl Read + Seek>, classpath: &str) -> anyhow::Result<Box<str>> {
+    let classfile = classpath.replace('.', "/") + ".class";
+    let mut zf = zipfile.by_name(&classfile)?;
+    let mut buf = Vec::new();
+    zf.read_to_end(&mut buf)?;
+    let cf = cafebabe::parse_class_with_options(&buf, cafebabe::ParseOptions::default().parse_bytecode(false))?;
+    Ok(cf.this_class.to_string().into_boxed_str())
+}
