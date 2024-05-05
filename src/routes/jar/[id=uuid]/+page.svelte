@@ -1,18 +1,11 @@
 <script lang="ts">
-  import { wsModEntries } from '$lib/ws'
   import { convertFileSrc } from '@tauri-apps/api/core'
 
   const versionRegexp = /^(\d+)(\.(\d+)(\.(\d+))?)?/
   let {data}: { data: import('./$types').PageData } = $props()
-  //let modInfo = $state<ModData>()
-  //let lstate = $state<0 | 1 | 2>(1)
-  //let name = $state("")
   function imgError(e: Event & { currentTarget: HTMLImageElement }) {
     e.currentTarget.setAttribute("is-broken", "")
   }
-  $effect(() => {
-    wsModEntries(data.id)
-  })
 </script>
 <h1>File: {data.name}</h1>
 <nav class="py-1">
