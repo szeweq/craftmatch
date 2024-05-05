@@ -154,8 +154,8 @@ fn main() {
             }
 
             let ws = app.state::<WSLock>().inner().clone();
-            let rb = Response::builder();
             async_runtime::spawn(async move {
+                let rb = Response::builder();
                 resp.respond(match get_img(ws, req.uri().path()) {
                     Ok(Some(data)) => rb.header("Content-Length", data.len()).body(data),
                     Ok(None) => rb.status(404).body(vec![]),
