@@ -16,6 +16,7 @@ export type ModData = {
     version: string,
     description?: string,
     authors?: string,
+    license?: string,
     logo_path?: string
   }[]
 }

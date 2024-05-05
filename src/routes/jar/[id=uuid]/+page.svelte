@@ -17,6 +17,7 @@
     <h2>{m.name}</h2>
     <p>{m.description}</p>
     <div class="text-sm">Authors: {m.authors ?? "Unknown"}</div>
+    <div class="text-sm">License: {m.license ?? "Unknown"}</div>
     {#if versionRegexp.test(m.version)}
       <div class="text-sm">Version: {m.version}</div>
     {:else}
