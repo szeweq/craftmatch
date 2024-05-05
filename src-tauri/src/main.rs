@@ -153,17 +153,19 @@ fn main() {
                 Ok(data)
             }
 
+            let now = std::time::Instant::now();
             let ws = app.state::<WSLock>().inner().clone();
             async_runtime::spawn(async move {
                 let rb = Response::builder();
                 resp.respond(match get_img(ws, req.uri().path()) {
-                    Ok(Some(data)) => rb.header("Content-Length", data.len()).body(data),
+                    Ok(Some( data)) => rb.header("Content-Length", data.len()).body(data),
                     Ok(None) => rb.status(404).body(vec![]),
                     Err(e) => {
                         eprintln!("{e}");
                         rb.status(500).body(vec![])
                     }
-                }.unwrap())
+                }.unwrap());
+                println!("Fetching image took {:?} -> {}", now.elapsed(), req.uri().path());
             });
         })
         .run(generate_context!())
