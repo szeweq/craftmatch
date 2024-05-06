@@ -125,8 +125,8 @@ pub fn extract_versions(jar_path: impl AsRef<Path>) -> anyhow::Result<()> {
         ModTypeMeta::Fabric(manifest) => {
             let depends = manifest.get("depends");
             let suggests = manifest.get("suggests");
-            eprintln!("depends: {:?}", depends);
-            eprintln!("suggests: {:?}", suggests);
+            eprintln!("depends: {depends:?}");
+            eprintln!("suggests: {suggests:?}");
         }
         ModTypeMeta::Forge(manifest) => {
             if let Some(dependencies) = manifest.get("dependencies").and_then(|v| v.as_table()) {

@@ -117,8 +117,8 @@ pub fn gather_complexity(p: impl AsRef<Path>) -> anyhow::Result<Complexity> {
 fn find_annotation<'a>(cf: &'a cafebabe::ClassFile<'a>, name: &'a str) -> Option<&'a cafebabe::attributes::Annotation<'a>> {
     cf.attributes.iter().find_map(|a| {
         match &a.data {
+            AttributeData::RuntimeVisibleAnnotations(an) |
             AttributeData::RuntimeInvisibleAnnotations(an) => an,
-            AttributeData::RuntimeVisibleAnnotations(an) => an,
             _ => { return None }
         }.iter().find(|a| a.type_descriptor == name)
     })

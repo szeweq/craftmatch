@@ -149,7 +149,7 @@ impl Inheritance {
         false
     }
     pub fn extend(&mut self, other: &Self) {
-        for (n, oi) in other.indices.iter() {
+        for (n, oi) in &other.indices {
             let i = self.find(n);
             let v = &mut self.inherits[i];
             v.extend_from_slice(&other.inherits[*oi]);
