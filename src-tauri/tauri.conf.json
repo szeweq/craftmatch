@@ -8,7 +8,8 @@
     "beforeBuildCommand": "pnpm build",
     "frontendDist": "../build"
   },
-  "app": {"windows": [
+  "app": {
+    "windows": [
       {
         "fullscreen": false,
         "resizable": true,
