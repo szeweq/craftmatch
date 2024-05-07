@@ -8,8 +8,9 @@ mod ext;
 mod jvm;
 mod mc;
 mod slice;
+mod jclass;
 
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, time::Instant};
 use tauri::{async_runtime, command, generate_context, generate_handler, http::Response, Manager, State};
 use uuid::Uuid;
 use workspace::{WSLock, WSMode};
@@ -92,7 +93,8 @@ fn ws_content_sizes(state: State<'_, WSLock>, mode: WSMode) -> Option<Arc<extrac
 }
 #[command]
 async fn ws_inheritance(state: State<'_, WSLock>, mode: WSMode) -> Result<Arc<ext::Inheritance>, ()> {
-    state.file_entries().and_then(|afe| {
+    let now = Instant::now();
+    let x = state.file_entries().and_then(|afe| {
         match mode {
             WSMode::Generic(force) => {
                 afe.gather_with(force, workspace::gather_inheritance)?;
@@ -101,11 +103,14 @@ async fn ws_inheritance(state: State<'_, WSLock>, mode: WSMode) -> Result<Arc<ex
             }
             WSMode::Specific(id) => afe.gather_by_id(id, workspace::gather_inheritance)
         }
-    }).map_err(|e| eprintln!("Error in ws_inheritance: {e}"))
+    }).map_err(|e| eprintln!("Error in ws_inheritance: {e}"));
+    println!("gather_inheritance took {:?}", now.elapsed());
+    x
 }
 #[command]
 async fn ws_complexity(state: State<'_, WSLock>, mode: WSMode) -> Result<Arc<jvm::Complexity>, ()> {
-    state.file_entries().and_then(|afe| {
+    let now = Instant::now();
+    let x = state.file_entries().and_then(|afe| {
         match mode {
             WSMode::Generic(force) => {
                 afe.gather_with(force, workspace::gather_complexity)?;
@@ -114,11 +119,14 @@ async fn ws_complexity(state: State<'_, WSLock>, mode: WSMode) -> Result<Arc<jvm
             }
             WSMode::Specific(id) => afe.gather_by_id(id, workspace::gather_complexity)
         }
-    }).map_err(|e| eprintln!("Error in ws_complexity: {e}"))
+    }).map_err(|e| eprintln!("Error in ws_complexity: {e}"));
+    println!("gather_complexity took {:?}", now.elapsed());
+    x
 }
 #[command]
 async fn ws_tags(state: State<'_, WSLock>, mode: WSMode) -> Result<Arc<extract::TagsList>, ()> {
-    state.file_entries().and_then(|afe| {
+    let now = Instant::now();
+    let x = state.file_entries().and_then(|afe| {
         match mode {
             WSMode::Generic(force) => {
                 afe.gather_with(force, workspace::gather_tags)?;
@@ -127,7 +135,9 @@ async fn ws_tags(state: State<'_, WSLock>, mode: WSMode) -> Result<Arc<extract::
             }
             WSMode::Specific(id) => afe.gather_by_id(id, workspace::gather_tags)
         }
-    }).map_err(|e| eprintln!("Error in ws_tags: {e}"))
+    }).map_err(|e| eprintln!("Error in ws_tags: {e}"));
+    println!("gather_tags took {:?}", now.elapsed());
+    x
 }
 #[command]
 async fn ws_mod_entries(state: State<'_, WSLock>, id: Uuid) -> Result<Arc<jvm::ModEntries>, ()> {
