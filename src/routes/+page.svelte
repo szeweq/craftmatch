@@ -1,9 +1,13 @@
-<script>
+<script lang="ts">
   import FilesList from "$lib/FilesList.svelte"
   import Welcome from "$lib/Welcome.svelte"
   import { ws } from "$lib/workspace.svelte"
   
   let fileQuery = $state("")
+  function uuidv7time(id: UUID) {
+    const d = new Date(parseInt(id.slice(0, 8) + id.slice(9, 13), 16))
+    return d.toISOString()
+  }
 </script>
 
 {#if !ws.open}
@@ -25,7 +29,7 @@
   </section>
   <FilesList class="text-sm b-2 b-solid b-white/40 rounded-md list-none mx-0 my-2 text-truncate" q={fileQuery}>
     {#snippet item(id, f)}
-      <li><a class="block c-inherit hover:c-inherit! p-1 hover:bg-white/20" href={`/jar/${id}`} title={id}>{f}</a></li>
+      <li><a class="block c-inherit hover:c-inherit! p-1 hover:bg-white/20" href={`/jar/${id}`} title={uuidv7time(id)}>{f}</a></li>
     {/snippet}
   </FilesList>
 {/if}
