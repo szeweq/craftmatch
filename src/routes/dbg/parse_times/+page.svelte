@@ -12,11 +12,11 @@
   let sorted = $derived(sortBy(queried, sortCount, ([,j]) => j))
   const timeFmt = new Intl.NumberFormat('en', {style: 'unit', unit: 'microsecond', unitDisplay: 'short'})
 </script>
-<h1>Debug times</h1>
+<h1>Debug – parsing times</h1>
 <section class="sticky top-0 rounded-md b-solid b-white/40 b-2 bgvar-c-bg1 p-1">
   <input type="text" bind:value={q} />
   <input id="sortCount" type="checkbox" bind:checked={sortCount} />
-  <label for="sortCount">Sort by count</label>
+  <label for="sortCount">Sort by time</label>
   <Paginator bind:page={page} count={pages} />
 </section>
 <ul class="text-xs">
