@@ -1,9 +1,9 @@
 // PURELY EXPERIMENTAL! DO NOT USE IN PRODUCTION!
 #![allow(dead_code)]
 
-use std::{io::{Read, Seek, SeekFrom}, marker::PhantomData, sync::Arc};
+use std::{io::{Read, Seek, SeekFrom}, marker::PhantomData, ops::Deref, sync::Arc};
 use byteorder::{ReadBytesExt, BE};
-use bytes::{Buf, Bytes};
+use bytes::{Buf, BufMut, Bytes};
 use self::{idx::{ClassInfo, Index, Utf8}, jtype::MemberType, pool::{ClassPool, PoolItem}};
 
 pub mod attr;
@@ -11,9 +11,26 @@ pub mod idx;
 pub mod jtype;
 pub mod pool;
 
-pub type JStr = Arc<[u8]>;
+#[derive(Clone)]
+pub struct JStr(Arc<[u8]>);
+impl From<Box<[u8]>> for JStr {
+    fn from(value: Box<[u8]>) -> Self {
+        Self(Arc::from(value))
+    }
+}
+impl Deref for JStr {
+    type Target = [u8];
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl std::fmt::Debug for JStr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "\"{}\"", String::from_utf8_lossy(&self.0))
+    }
+}
 
-pub struct JClassReader<R: Read + Seek> {
+pub struct JClassSeekReader<R: Read + Seek> {
     r: R,
     pool: ClassPool,
     minor: u16,
@@ -28,7 +45,7 @@ pub struct JClassReader<R: Read + Seek> {
     end: u64
 }
 
-impl<R: Read + Seek> JClassReader<R> {
+impl<R: Read + Seek> JClassSeekReader<R> {
     pub fn new(mut r: R) -> anyhow::Result<Self> {
         if !matches!(r.read_u32::<BE>(), Ok(0xCAFEBABE)) {
             anyhow::bail!("Invalid magic");
@@ -39,61 +56,9 @@ impl<R: Read + Seek> JClassReader<R> {
             Err(e) => return Err(e.into())
         };
         let mut pool = vec![PoolItem::None];
-        for _ in 0..pool_count {
+        while pool.len() < pool_count as usize {
             let tag = r.read_u8()?;
-            pool.push(match tag {
-                1 => {
-                    let len = r.read_u16::<BE>()? as usize;
-                    let mut b = vec![0; len];
-                    r.read_exact(&mut b)?;
-                    PoolItem::Utf8(Arc::from(b.into_boxed_slice()))
-                }
-                3 => PoolItem::Int(r.read_i32::<BE>()?),
-                4 => PoolItem::Float(r.read_f32::<BE>()?),
-                5 => PoolItem::Long(r.read_i64::<BE>()?),
-                6 => PoolItem::Double(r.read_f64::<BE>()?),
-                7 => PoolItem::Class(r.read_u16::<BE>()?.try_into()?),
-                8 => PoolItem::String(r.read_u16::<BE>()?.try_into()?),
-                9 => {
-                    let r1 = r.read_u16::<BE>()?.try_into()?;
-                    let r2 = r.read_u16::<BE>()?.try_into()?;
-                    PoolItem::RefField(r1, r2)
-                }
-                10 => {
-                    let r1 = r.read_u16::<BE>()?.try_into()?;
-                    let r2 = r.read_u16::<BE>()?.try_into()?;
-                    PoolItem::RefMethod(r1, r2)
-                }
-                11 => {
-                    let r1 = r.read_u16::<BE>()?.try_into()?;
-                    let r2 = r.read_u16::<BE>()?.try_into()?;
-                    PoolItem::RefInterfaceMethod(r1, r2)
-                }
-                12 => {
-                    let r1 = r.read_u16::<BE>()?.try_into()?;
-                    let r2 = r.read_u16::<BE>()?.try_into()?;
-                    PoolItem::NameAndType(r1, r2)
-                }
-                15 if major >= 51 => {
-                    let kind = r.read_u8()?;
-                    let r = r.read_u16::<BE>()?;
-                    PoolItem::MethodHandle((kind, r).try_into()?)
-                }
-                16 if major >= 51 => PoolItem::MethodType(r.read_u16::<BE>()?.try_into()?),
-                17 if major >= 55 => {
-                    let r1 = r.read_u16::<BE>()?;
-                    let r2 = r.read_u16::<BE>()?.try_into()?;
-                    PoolItem::Dynamic(r1, r2)
-                }
-                18 if major >= 51 => {
-                    let r1 = r.read_u16::<BE>()?;
-                    let r2 = r.read_u16::<BE>()?.try_into()?;
-                    PoolItem::InvokeDynamic(r1, r2)
-                }
-                19 if major >= 53 => PoolItem::Module(r.read_u16::<BE>()?.try_into()?),
-                20 if major >= 53 => PoolItem::Package(r.read_u16::<BE>()?.try_into()?),
-                n => anyhow::bail!("Invalid tag {}", n),
-            });
+            pool.push(PoolItem::read_from(tag, major, &mut r)?);
             if tag == 5 || tag == 6 {
                 pool.push(PoolItem::Reserved)
             }
@@ -116,7 +81,7 @@ impl<R: Read + Seek> JClassReader<R> {
         let pos_attributes = r.stream_position()?;
         skip_attr_info(&mut r)?;
         let end = r.stream_position()?;
-        if end != r.seek(SeekFrom::End(0))? {
+        if r.read(&mut [0; 4])? > 0 {
             anyhow::bail!("Invalid end");
         }
         Ok(Self {
@@ -135,18 +100,18 @@ impl<R: Read + Seek> JClassReader<R> {
         })
     }
 
-    pub fn class_name(&self) -> anyhow::Result<JStr> {
+    pub fn class_name(&self) -> anyhow::Result<&JStr> {
         self.pool.get(self.pool.get(self.class_ref)?)
     }
 
-    pub fn super_class(&self) -> anyhow::Result<Option<JStr>> {
+    pub fn super_class(&self) -> anyhow::Result<Option<&JStr>> {
         match self.super_ref {
             None => Ok(None),
             Some(super_ref) => Ok(Some(self.pool.get(self.pool.get(super_ref)?)?)),
         }
     }
 
-    pub fn interfaces(&mut self) -> anyhow::Result<impl Iterator<Item = anyhow::Result<JStr>> + '_> {
+    pub fn interfaces(&mut self) -> anyhow::Result<impl Iterator<Item = anyhow::Result<&JStr>> + '_> {
         self.r.seek(SeekFrom::Start(self.pos_interfaces))?;
         let mut v = vec![0; self.r.read_u16::<BE>()? as usize];
         self.r.read_u16_into::<BE>(&mut v)?;
@@ -176,20 +141,53 @@ impl<R: Read + Seek> JClassReader<R> {
     }
 }
 
-fn skip_member_info<R: Read + Seek>(r: &mut R) -> anyhow::Result<()> {
+fn skip_member_info<R: Read>(r: &mut R) -> anyhow::Result<()> {
     let count = r.read_u16::<BE>()?;
     for _ in 0..count {
-        r.seek(SeekFrom::Current(6))?;
+        r.read_exact(&mut [0; 6])?;
         skip_attr_info(r)?;
     }
     Ok(())
 }
-fn skip_attr_info<R: Read + Seek>(r: &mut R) -> anyhow::Result<()> {
+fn skip_attr_info<R: Read>(r: &mut R) -> anyhow::Result<()> {
     let count = r.read_u16::<BE>()?;
     for _ in 0..count {
-        r.seek(SeekFrom::Current(2))?;
+        r.read_exact(&mut [0; 2])?;
         let len = r.read_u32::<BE>()?;
-        r.seek(SeekFrom::Current(len as i64))?;
+        skip_exact(r, len as usize)?;
+    }
+    Ok(())
+}
+
+fn skip_exact<R: Read>(r: &mut R, n: usize) -> anyhow::Result<()> {
+    let x = r.bytes().take(n).count();
+    if x != n {
+        anyhow::bail!("Invalid length");
+    }
+    Ok(())
+}
+
+fn read_member_info<R: Read>(r: &mut R, bmut: &mut bytes::BytesMut) -> anyhow::Result<()> {
+    let count = r.read_u16::<BE>()?;
+    bmut.put_u16(count);
+    let mut n = [0; 6];
+    for _ in 0..count {
+        r.read_exact(&mut n)?;
+        bmut.put_slice(&n);
+        read_attr_info(r, bmut)?;
+    }
+    Ok(())
+}
+fn read_attr_info<R: Read>(r: &mut R, bmut: &mut bytes::BytesMut) -> anyhow::Result<()> {
+    let count = r.read_u16::<BE>()?;
+    bmut.put_u16(count);
+    let mut n = [0; 2];
+    for _ in 0..count {
+        r.read_exact(&mut n)?;
+        bmut.put_slice(&n);
+        let len = r.read_u32::<BE>()?;
+        bmut.put_u32(len);
+        std::io::copy(&mut r.take(len as u64), &mut bmut.writer())?;
     }
     Ok(())
 }
@@ -265,10 +263,10 @@ pub struct MemberInfo<T: MemberType> {
     _t: PhantomData<T>
 }
 impl<T: MemberType> MemberInfo<T> {
-    pub fn name(&self) -> anyhow::Result<JStr> {
+    pub fn name(&self) -> anyhow::Result<&JStr> {
         self.pool.get(self.name_idx)
     }
-    pub fn descriptor(&self) -> anyhow::Result<JStr> {
+    pub fn descriptor(&self) -> anyhow::Result<&JStr> {
         self.pool.get(self.descriptor_idx)
     }
     pub fn attrs(&mut self) -> Attrs<T> {
@@ -307,7 +305,158 @@ pub struct AttrInfo<T> {
     _t: PhantomData<T>
 }
 impl<T> AttrInfo<T> {
-    pub fn name(&self) -> anyhow::Result<JStr> {
+    pub fn name(&self) -> anyhow::Result<&JStr> {
         self.pool.get(self.name_idx)
+    }
+}
+
+trait Step {
+    type Next;
+}
+
+pub enum AtInterfaces {}
+impl Step for AtInterfaces {
+    type Next = AtFields;
+}
+pub enum AtFields {}
+impl Step for AtFields {
+    type Next = AtMethods;
+}
+pub enum AtMethods {}
+impl Step for AtMethods {
+    type Next = AtAttributes;
+}
+pub enum AtAttributes {}
+impl Step for AtAttributes {
+    type Next = ();
+}
+
+pub struct JClassReader<R: Read, At> {
+    r: R,
+    pool: ClassPool,
+    minor: u16,
+    major: u16,
+    access_flags: u16,
+    class_ref: Index<ClassInfo>,
+    super_ref: Option<Index<ClassInfo>>,
+    _t: PhantomData<At>
+}
+
+#[allow(private_bounds)]
+impl <R: Read, At: Step> JClassReader<R, At> {
+    fn step(self) -> anyhow::Result<JClassReader<R, At::Next>> {
+        Ok(JClassReader {
+            r: self.r,
+            pool: self.pool,
+            minor: self.minor,
+            major: self.major,
+            access_flags: self.access_flags,
+            class_ref: self.class_ref,
+            super_ref: self.super_ref,
+            _t: PhantomData
+        })
+    }
+}
+
+impl <R: Read, At> JClassReader<R, At> {
+    pub fn class_name(&self) -> anyhow::Result<&JStr> {
+        self.pool.get(self.pool.get(self.class_ref)?)
+    }
+    pub fn super_class(&self) -> anyhow::Result<Option<&JStr>> {
+        match self.super_ref {
+            None => Ok(None),
+            Some(super_ref) => Ok(Some(self.pool.get(self.pool.get(super_ref)?)?)),
+        }
+    }
+}
+
+impl <R: Read> JClassReader<R, AtInterfaces> {
+    pub fn new(mut r: R) -> anyhow::Result<Self> {
+        if !matches!(r.read_u32::<BE>(), Ok(0xCAFEBABE)) {
+            anyhow::bail!("Invalid magic");
+        }
+        let mut cv = [0u16; 3];
+        let [minor, major, pool_count] = match r.read_u16_into::<BE>(&mut cv) {
+            Ok(()) => cv,
+            Err(e) => return Err(e.into())
+        };
+        let mut pool = vec![PoolItem::None];
+        while pool.len() < pool_count as usize {
+            let tag = r.read_u8()?;
+            pool.push(PoolItem::read_from(tag, major, &mut r)?);
+            if tag == 5 || tag == 6 {
+                pool.push(PoolItem::Reserved)
+            }
+        }
+        let pool = ClassPool::from(pool.into_boxed_slice());
+        let mut cv = [0u16; 3];
+        let [access_flags, class_ref, super_ref] = match r.read_u16_into::<BE>(&mut cv) {
+            Ok(()) => cv,
+            Err(e) => return Err(e.into())
+        };
+        let class_ref = class_ref.try_into()?;
+        let super_ref = Index::maybe(super_ref);
+        Ok(Self { r, pool, minor, major, access_flags, class_ref, super_ref, _t: PhantomData })
+    }
+
+    #[inline]
+    pub fn interfaces(mut self, f: impl FnOnce(Vec<anyhow::Result<JStr>>) -> anyhow::Result<()>) -> anyhow::Result<JClassReader<R, AtFields>> {
+        let mut v = vec![0; self.r.read_u16::<BE>()? as usize];
+        self.r.read_u16_into::<BE>(&mut v)?;
+        let v = v.into_iter().map(|x| self.pool.get(self.pool.get_::<ClassInfo>(x)?).cloned()).collect();
+        f(v)?;
+        self.step()
+    }
+    pub fn skip_interfaces(mut self) -> anyhow::Result<JClassReader<R, AtFields>> {
+        let l = self.r.read_u16::<BE>()?;
+        for _ in 0..l {
+            self.r.read_u16::<BE>()?;
+        }
+        self.step()
+    }
+}
+impl <R: Read> JClassReader<R, AtFields> {
+    #[inline]
+    pub fn fields(mut self, f: impl FnOnce(MemberIter<jtype::OfField>) -> anyhow::Result<()>) -> anyhow::Result<JClassReader<R, AtMethods>> {
+        let mut bmut = bytes::BytesMut::new();
+        read_member_info(&mut self.r, &mut bmut)?;
+        let b = bmut.freeze();
+        let len = b.clone().get_u16();
+        f(MemberIter { b, pool: self.pool.clone(), cur: 0, len, _t: PhantomData })?;
+        self.step()
+    }
+    pub fn skip_fields(mut self) -> anyhow::Result<JClassReader<R, AtMethods>> {
+        skip_member_info(&mut self.r)?;
+        self.step()
+    }
+}
+impl <R: Read> JClassReader<R, AtMethods> {
+    #[inline]
+    pub fn methods(mut self, f: impl FnOnce(MemberIter<jtype::OfMethod>) -> anyhow::Result<()>) -> anyhow::Result<JClassReader<R, AtAttributes>> {
+        let mut bmut = bytes::BytesMut::new();
+        read_member_info(&mut self.r, &mut bmut)?;
+        let b = bmut.freeze();
+        let len = b.clone().get_u16();
+        f(MemberIter { b, pool: self.pool.clone(), cur: 0, len, _t: PhantomData })?;
+        self.step()
+    }
+    pub fn skip_methods(mut self) -> anyhow::Result<JClassReader<R, AtAttributes>> {
+        skip_member_info(&mut self.r)?;
+        self.step()
+    }
+}
+impl <R: Read> JClassReader<R, AtAttributes> {
+    #[inline]
+    pub fn attributes(mut self, f: impl FnOnce(Attrs<jtype::OfClass>) -> anyhow::Result<()>) -> anyhow::Result<JClassReader<R, ()>> {
+        let mut bmut = bytes::BytesMut::new();
+        read_attr_info(&mut self.r, &mut bmut)?;
+        let b = bmut.freeze();
+        let len = b.clone().get_u16();
+        f(Attrs { b, pool: self.pool.clone(), cur: 0, len, _t: PhantomData })?;
+        self.step()
+    }
+    pub fn skip_attributes(mut self) -> anyhow::Result<JClassReader<R, ()>> {
+        skip_attr_info(&mut self.r)?;
+        self.step()
     }
 }

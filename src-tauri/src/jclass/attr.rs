@@ -212,11 +212,11 @@ impl UseAttr for KeyEnclosingMethod {
         let class_name = pool.get(pool.get_::<ClassInfo>(b.get_u16())?)?;
         let method = if let Some(idx) = Index::<NameAndType>::maybe(b.get_u16()) {
             let (mn, mt) = pool.get(idx)?;
-            Some((pool.get(mn)?, pool.get(mt)?))
+            Some((pool.get(mn)?.clone(), pool.get(mt)?.clone()))
         } else {
             None
         };
-        Ok((class_name, method))
+        Ok((class_name.clone(), method))
     }
 }
 // impl UseAttr for KeyExceptions {}
@@ -253,19 +253,19 @@ impl UseAttr for KeyTypeAnnotations {
 impl UseAttr for KeySignature {
     type Out = JStr;
     fn parse(mut b: Bytes, pool: &ClassPool) -> anyhow::Result<Self::Out> {
-        pool.get_::<Utf8>(b.get_u16())
+        pool.get_::<Utf8>(b.get_u16()).cloned()
     }
 }
 // impl UseAttr for KeySourceDebugExtension {}
 impl UseAttr for KeySourceFile {
     type Out = JStr;
     fn parse(mut b: Bytes, pool: &ClassPool) -> anyhow::Result<Self::Out> {
-        pool.get_::<Utf8>(b.get_u16())
+        pool.get_::<Utf8>(b.get_u16()).cloned()
     }
 }
 // impl UseAttr for KeyStackMapTable {}
 
-trait Parsing {
+pub trait Parsing {
     fn parse(b: &mut Bytes, pool: &ClassPool) -> anyhow::Result<Self> where Self: Sized;
 }
 
@@ -284,7 +284,7 @@ impl<T: Parsing> Parsing for Data<T> {
     fn parse(b: &mut Bytes, pool: &ClassPool) -> anyhow::Result<Self> {
         let mut b = b.clone();
         let d = T::parse(&mut b, pool)?;
-        Ok(Data { b, pool: pool.clone(), data: d })
+        Ok(Self { b, pool: pool.clone(), data: d })
     }
 }
 
@@ -319,7 +319,7 @@ pub struct Annotation {
 }
 impl Data<Annotation> {
     pub fn type_name(&self) -> anyhow::Result<JStr> {
-        self.pool.get(self.type_idx)
+        self.pool.get(self.type_idx).cloned()
     }
     pub fn elems(&self) -> Iter<Data<AnnElemPair>> {
         Iter::new(self.b.clone(), self.pool.clone())

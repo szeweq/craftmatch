@@ -4,23 +4,23 @@ use super::{pool::JVal, JStr, PoolItem};
 
 
 
-pub(in super) enum Utf8 {}
-pub(in super) enum NameAndType {}
-pub(in super) enum FieldRef {}
-pub(in super) enum MethodRef {}
-pub(in super) enum InterfaceMethodRef {}
-pub(in super) enum AnyMethodRef {}
-pub(in super) enum ClassInfo {}
-pub(in super) enum ConstVal {}
+pub enum Utf8 {}
+pub enum NameAndType {}
+pub enum FieldRef {}
+pub enum MethodRef {}
+pub enum InterfaceMethodRef {}
+pub enum AnyMethodRef {}
+pub enum ClassInfo {}
+pub enum ConstVal {}
 
-pub(in super) trait UseIndex {
+pub trait UseIndex<'a> {
     type Out;
-    fn at(pool_item: &PoolItem) -> Option<Self::Out>;
+    fn at(pool_item: &'a PoolItem) -> Option<Self::Out>;
 }
 
-pub(in super) struct Index<R>(pub(in super) NonZeroU16, PhantomData<R>);
+pub struct Index<R>(pub(in super) NonZeroU16, PhantomData<R>);
 impl<R> Index<R> {
-    pub(in super) fn maybe(value: u16) -> Option<Self> {
+    pub fn maybe(value: u16) -> Option<Self> {
         NonZeroU16::new(value).map(|x| Self(x, PhantomData))
     }
 }
@@ -37,37 +37,44 @@ impl<R> TryFrom<u16> for Index<R> {
         }
     }
 }
-impl UseIndex for Utf8 {
-    type Out = JStr;
-    fn at(item: &PoolItem) -> Option<Self::Out> {
-        if let PoolItem::Utf8(s) = item { Some(s.clone()) } else { None }
+impl<R> std::fmt::Debug for Index<R> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Index({})", self.0)
     }
 }
-impl UseIndex for NameAndType {
+
+
+impl<'a> UseIndex<'a> for Utf8 {
+    type Out = &'a JStr;
+    fn at(item: &'a PoolItem) -> Option<Self::Out> {
+        if let PoolItem::Utf8(s) = item { Some(s) } else { None }
+    }
+}
+impl UseIndex<'_> for NameAndType {
     type Out = (Index<Utf8>, Index<Utf8>);
     fn at(item: &PoolItem) -> Option<Self::Out> {
         if let PoolItem::NameAndType(a, b) = item { Some((*a, *b)) } else { None }
     }
 }
-impl UseIndex for FieldRef {
+impl UseIndex<'_> for FieldRef {
     type Out = (Index<ClassInfo>, Index<NameAndType>);
     fn at(item: &PoolItem) -> Option<Self::Out> {
         if let PoolItem::RefField(a, b) = item { Some((*a, *b)) } else { None }
     }
 }
-impl UseIndex for MethodRef {
+impl UseIndex<'_> for MethodRef {
     type Out = (Index<ClassInfo>, Index<NameAndType>);
     fn at(item: &PoolItem) -> Option<Self::Out> {
         if let PoolItem::RefMethod(a, b) = item { Some((*a, *b)) } else { None }
     }
 }
-impl UseIndex for InterfaceMethodRef {
+impl UseIndex<'_> for InterfaceMethodRef {
     type Out = (Index<ClassInfo>, Index<NameAndType>);
     fn at(item: &PoolItem) -> Option<Self::Out> {
         if let PoolItem::RefInterfaceMethod(a, b) = item { Some((*a, *b)) } else { None }
     }
 }
-impl UseIndex for AnyMethodRef {
+impl UseIndex<'_> for AnyMethodRef {
     type Out = (bool, Index<ClassInfo>, Index<NameAndType>);
     fn at(item: &PoolItem) -> Option<Self::Out> {
         match item {
@@ -77,13 +84,13 @@ impl UseIndex for AnyMethodRef {
         }
     }
 }
-impl UseIndex for ClassInfo {
+impl UseIndex<'_> for ClassInfo {
     type Out = Index<Utf8>;
     fn at(item: &PoolItem) -> Option<Self::Out> {
         if let PoolItem::Class(a) = item { Some(*a) } else { None }
     }
 }
-impl UseIndex for ConstVal {
+impl UseIndex<'_> for ConstVal {
     type Out = JVal;
     fn at(item: &PoolItem) -> Option<Self::Out> {
         Some(match item {

@@ -1,8 +1,11 @@
 use std::sync::Arc;
 
+use byteorder::{BE, ReadBytesExt};
+
 use super::{idx::{AnyMethodRef, ClassInfo, FieldRef, Index, InterfaceMethodRef, MethodRef, NameAndType, UseIndex, Utf8}, JStr};
 
-pub(in super) enum PoolItem {
+#[derive(Debug)]
+pub enum PoolItem {
     None,
     Utf8(JStr),
     Int(i32),
@@ -23,9 +26,67 @@ pub(in super) enum PoolItem {
     Package(Index<Utf8>),
     Reserved
 }
+impl PoolItem {
+    pub fn read_from(tag: u8, major: u16, r: &mut impl std::io::Read) -> anyhow::Result<Self> {
+        Ok(match tag {
+            1 => {
+                let len = r.read_u16::<BE>()? as usize;
+                let mut b = vec![0; len];
+                r.read_exact(&mut b)?;
+                Self::Utf8(JStr::from(b.into_boxed_slice()))
+            }
+            3 => Self::Int(r.read_i32::<BE>()?),
+            4 => Self::Float(r.read_f32::<BE>()?),
+            5 => Self::Long(r.read_i64::<BE>()?),
+            6 => Self::Double(r.read_f64::<BE>()?),
+            7 => Self::Class(r.read_u16::<BE>()?.try_into()?),
+            8 => Self::String(r.read_u16::<BE>()?.try_into()?),
+            9 => {
+                let r1 = r.read_u16::<BE>()?.try_into()?;
+                let r2 = r.read_u16::<BE>()?.try_into()?;
+                Self::RefField(r1, r2)
+            }
+            10 => {
+                let r1 = r.read_u16::<BE>()?.try_into()?;
+                let r2 = r.read_u16::<BE>()?.try_into()?;
+                Self::RefMethod(r1, r2)
+            }
+            11 => {
+                let r1 = r.read_u16::<BE>()?.try_into()?;
+                let r2 = r.read_u16::<BE>()?.try_into()?;
+                Self::RefInterfaceMethod(r1, r2)
+            }
+            12 => {
+                let r1 = r.read_u16::<BE>()?.try_into()?;
+                let r2 = r.read_u16::<BE>()?.try_into()?;
+                Self::NameAndType(r1, r2)
+            }
+            15 if major >= 51 => {
+                let kind = r.read_u8()?;
+                let r = r.read_u16::<BE>()?;
+                Self::MethodHandle((kind, r).try_into()?)
+            }
+            16 if major >= 51 => Self::MethodType(r.read_u16::<BE>()?.try_into()?),
+            17 if major >= 55 => {
+                let r1 = r.read_u16::<BE>()?;
+                let r2 = r.read_u16::<BE>()?.try_into()?;
+                Self::Dynamic(r1, r2)
+            }
+            18 if major >= 51 => {
+                let r1 = r.read_u16::<BE>()?;
+                let r2 = r.read_u16::<BE>()?.try_into()?;
+                Self::InvokeDynamic(r1, r2)
+            }
+            19 if major >= 53 => Self::Module(r.read_u16::<BE>()?.try_into()?),
+            20 if major >= 53 => Self::Package(r.read_u16::<BE>()?.try_into()?),
+            n => anyhow::bail!("Invalid tag: {}", n),
+        })
+    }
+}
 
 #[allow(dead_code)]
-pub(in super) enum RefKind {
+#[derive(Debug)]
+pub enum RefKind {
     GetField(Index<FieldRef>),
     GetStatic(Index<FieldRef>),
     PutField(Index<FieldRef>),
@@ -55,18 +116,18 @@ impl TryFrom<(u8, u16)> for RefKind {
 }
 
 #[derive(Clone)]
-pub(in super) struct ClassPool(Arc<[PoolItem]>);
+pub struct ClassPool(Arc<[PoolItem]>);
 impl ClassPool {
-    pub(in super) fn get<R: UseIndex>(&self, idx: Index<R>) -> anyhow::Result<R::Out> {
+    pub fn get<R: for <'a> UseIndex<'a>>(&self, idx: Index<R>) -> anyhow::Result<<R as UseIndex<'_>>::Out> {
         match self.0.get(idx.0.get() as usize) {
             Some(pi) => R::at(pi).ok_or_else(|| anyhow::anyhow!("Invalid pool item")),
             None => anyhow::bail!("Invalid pool index"),
         }
     }
-    pub(in super) fn get_<R: UseIndex>(&self, idx: u16) -> anyhow::Result<R::Out> {
+    pub fn get_<R: for <'a> UseIndex<'a>>(&self, idx: u16) -> anyhow::Result<<R as UseIndex<'_>>::Out> {
         self.get::<R>(idx.try_into()?)
     }
-    pub(in super) fn str_to_index(&self, s: &str) -> Option<Index<Utf8>> {
+    pub fn str_to_index(&self, s: &str) -> Option<Index<Utf8>> {
         let b = s.as_bytes();
         self.0.iter().position(|i| match i {
             PoolItem::Utf8(a) => &**a == b,
@@ -80,6 +141,7 @@ impl<T> From<T> for ClassPool where T: Into<Arc<[PoolItem]>> {
     }
 }
 
+#[derive(Clone)]
 pub enum JVal {
     Int(i32),
     Float(f32),
