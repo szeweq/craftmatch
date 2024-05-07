@@ -32,6 +32,7 @@ header {
 ::-webkit-scrollbar {
   height: 0.5rem;
   width: 0.5rem;
+  background-color: #161616;
 }
 ::-webkit-scrollbar-thumb {
   background-color: #fff4;
