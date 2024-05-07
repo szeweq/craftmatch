@@ -4,7 +4,7 @@ use cafebabe::{attributes::{AnnotationElement, AnnotationElementValue, Attribute
 use once_cell::sync::Lazy;
 use serde::Serialize;
 
-use crate::ext;
+use crate::{ext, jclass};
 
 pub static PARSE_TIMES: Lazy<Mutex<HashMap<Box<str>, std::time::Duration>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
@@ -16,8 +16,7 @@ fn parse_class_safe(b: &[u8], bytecode: bool) -> anyhow::Result<cafebabe::ClassF
             Ok(x)
         }
         Err(e) => {
-            println!("Parsing failed (in {:?}): {:?}", now.elapsed(), e);
-            Err(anyhow::Error::from(e))
+            Err(anyhow::anyhow!("Parsing failed (in {:?}): {:?}", now.elapsed(), e))
         }
     }
 }
@@ -29,6 +28,23 @@ where for<'a> F: FnMut(&'a cafebabe::ClassFile<'a>) -> anyhow::Result<()> {
         let mut buf = Vec::new();
         zf.read_to_end(&mut buf)?;
         f(&parse_class_safe(&buf, bytecode)?)
+    })
+}
+
+#[inline]
+fn zip_each_jclass<F>(zip: &mut zip::ZipArchive<impl Read + Seek>, mut f: F) -> anyhow::Result<()>
+where F: FnMut(jclass::JClassReader<zip::read::ZipFile, jclass::AtInterfaces>) -> anyhow::Result<()> {
+    ext::zip_each_by_extension(zip, ext::Extension::Class, |zf| {
+        //let mut buf = Vec::new();
+        //zf.read_to_end(&mut buf)?;
+        let name = zf.name().to_string();
+        let mut jcr = match jclass::JClassReader::new(zf) {
+            Ok(x) => x,
+            Err(e) => {
+                return Err(anyhow::anyhow!("Parsing failed (in {}): {}", name, e));
+            }
+        };
+        f(jcr)
     })
 }
 
@@ -55,6 +71,32 @@ pub fn gather_inheritance(p: impl AsRef<Path>) -> anyhow::Result<ext::Inheritanc
         for cif in &cf.interfaces {
             inh.add_inherit(ci, cif);
         }
+        Ok(())
+    })?;
+    Ok(inh)
+}
+
+pub fn gather_inheritance_v2(p: impl AsRef<Path>) -> anyhow::Result<ext::Inheritance> {
+    let mut zip = ext::zip_open(p)?;
+    let mut inh = ext::Inheritance::new();
+    zip_each_jclass(&mut zip, |jcr| {
+        let ajcn = jcr.class_name()?;
+        let cname = std::str::from_utf8(ajcn)?;
+        let ci = inh.find(cname);
+        if let Some(ajcn) = jcr.super_class()? {
+            let s = std::str::from_utf8(ajcn)?;
+            if s != "java/lang/Object" {
+                inh.add_inherit(ci, s);
+            }
+        }
+        jcr.interfaces(|av| {
+            for ajcn in av {
+                let ajcn = ajcn?;
+                let s = std::str::from_utf8(&ajcn)?;
+                inh.add_inherit(ci, s);
+            }
+            Ok(())
+        })?;
         Ok(())
     })?;
     Ok(inh)
