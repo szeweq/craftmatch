@@ -659,6 +659,7 @@ dependencies = [
  "byteorder",
  "bytes",
  "cafebabe",
+ "once_cell",
  "rayon",
  "rfd",
  "serde",

@@ -1,15 +1,18 @@
-use std::{collections::HashMap, io::{Read, Seek}, path::Path};
+use std::{collections::HashMap, io::{Read, Seek}, path::Path, sync::Mutex};
 
 use cafebabe::{attributes::{AnnotationElement, AnnotationElementValue, AttributeData}, constant_pool::{ConstantPoolItem, LiteralConstant}};
+use once_cell::sync::Lazy;
 use serde::Serialize;
 
 use crate::ext;
+
+pub static PARSE_TIMES: Lazy<Mutex<HashMap<Box<str>, std::time::Duration>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
 fn parse_class_safe(b: &[u8], bytecode: bool) -> anyhow::Result<cafebabe::ClassFile<'_>> {
     let now = std::time::Instant::now();
     match cafebabe::parse_class_with_options(b, cafebabe::ParseOptions::default().parse_bytecode(bytecode)) {
         Ok(x) => {
-            println!("Parsing took {:?} -> {}", now.elapsed(), x.this_class);
+            PARSE_TIMES.lock().unwrap().insert(x.this_class.clone().into(), now.elapsed());
             Ok(x)
         }
         Err(e) => {

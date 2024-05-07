@@ -9,7 +9,7 @@ mod jvm;
 mod mc;
 mod slice;
 
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 use tauri::{async_runtime, command, generate_context, generate_handler, http::Response, Manager, State};
 use uuid::Uuid;
 use workspace::{WSLock, WSMode};
@@ -136,11 +136,17 @@ async fn ws_mod_entries(state: State<'_, WSLock>, id: Uuid) -> Result<Arc<jvm::M
         .map_err(|e| eprintln!("Error in ws_mod_entry: {e}"))
 }
 
+#[command]
+fn dbg_parse_times() -> HashMap<Box<str>, f64> {
+    let m = jvm::PARSE_TIMES.lock().unwrap();
+    m.iter().map(|(k, v)| (k.clone(), v.as_secs_f64())).collect()
+}
+
 fn main() {
     tauri::Builder::default()
         .manage(workspace::WSLock::new())
         .invoke_handler(generate_handler![
-            load, open_workspace, ws_files, ws_name, ws_mod_data, ws_str_index, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries
+            load, open_workspace, ws_files, ws_name, ws_mod_data, ws_str_index, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries, dbg_parse_times
         ])
         .register_asynchronous_uri_scheme_protocol("raw", |app, req, resp| {
             let now = std::time::Instant::now();
