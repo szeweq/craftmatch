@@ -33,15 +33,12 @@ where for<'a> F: FnMut(&'a cafebabe::ClassFile<'a>) -> anyhow::Result<()> {
 
 #[inline]
 fn zip_each_jclass<F>(zip: &mut zip::ZipArchive<impl Read + Seek>, mut f: F) -> anyhow::Result<()>
-where F: FnMut(jclass::JClassReader<zip::read::ZipFile, jclass::AtInterfaces>) -> anyhow::Result<()> {
-    ext::zip_each_by_extension(zip, ext::Extension::Class, |zf| {
-        //let mut buf = Vec::new();
-        //zf.read_to_end(&mut buf)?;
-        let name = zf.name().to_string();
-        let mut jcr = match jclass::JClassReader::new(zf) {
+where F: FnMut(jclass::JClassReader<&mut zip::read::ZipFile, jclass::AtInterfaces>) -> anyhow::Result<()> {
+    ext::zip_each_by_extension(zip, ext::Extension::Class, |mut zf| {
+        let jcr = match jclass::JClassReader::new(&mut zf) {
             Ok(x) => x,
             Err(e) => {
-                return Err(anyhow::anyhow!("Parsing failed (in {}): {}", name, e));
+                return Err(anyhow::anyhow!("Parsing failed (in {}): {}", zf.name(), e));
             }
         };
         f(jcr)
