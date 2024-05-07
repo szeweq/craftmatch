@@ -149,7 +149,7 @@ pub fn gather_tags(fi: &FileInfo) -> anyhow::Result<extract::TagsList> {
     extract::gather_tags(&mut ext::zip_open(&fi.path)?)
 }
 pub fn gather_str_index(fi: &FileInfo) -> anyhow::Result<jvm::StrIndexMapped> {
-    jvm::gather_str_index(&fi.path)
+    jvm::gather_str_index_v2(&fi.path)
 }
 pub fn gather_mod_entries(fi: &FileInfo) -> anyhow::Result<jvm::ModEntries> {
     let Some(moddata) = fi.get::<manifest::ModTypeData>() else { return Err(anyhow::anyhow!("No moddata")) };

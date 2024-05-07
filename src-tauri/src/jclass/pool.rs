@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{ops::Deref, sync::Arc};
 
 use byteorder::{BE, ReadBytesExt};
 
@@ -140,6 +140,10 @@ impl<T> From<T> for ClassPool where T: Into<Arc<[PoolItem]>> {
         Self(t.into())
     }
 }
+impl Deref for ClassPool {
+    type Target = [PoolItem];
+    fn deref(&self) -> &Self::Target { &self.0 }
+}
 
 #[derive(Clone)]
 pub enum JVal {
@@ -148,4 +152,14 @@ pub enum JVal {
     Long(i64),
     Double(f64),
     Str(Index<Utf8>),
+}
+
+pub trait PoolIter<'a> {
+    fn by_type<U: UseIndex<'a>>(self) -> impl Iterator<Item = <U as UseIndex<'a>>::Out>;
+}
+impl<'a, I: Iterator<Item = &'a PoolItem>> PoolIter<'a> for I {
+    #[inline]
+    fn by_type<U: UseIndex<'a>>(self) -> impl Iterator<Item = <U as UseIndex<'a>>::Out> {
+        self.filter_map(U::at)
+    }
 }

@@ -31,6 +31,11 @@ impl std::fmt::Debug for JStr {
         write!(f, "\"{}\"", String::from_utf8_lossy(&self.0))
     }
 }
+impl std::fmt::Display for JStr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", String::from_utf8_lossy(&self.0))
+    }
+}
 
 fn skip_member_info<R: Read>(r: &mut R) -> anyhow::Result<()> {
     let count = r.read_u16::<BE>()?;
@@ -258,6 +263,10 @@ impl <R: Read, At> JClassReader<R, At> {
             None => Ok(None),
             Some(super_ref) => Ok(Some(self.pool.get(self.pool.get(super_ref)?)?)),
         }
+    }
+    #[inline]
+    pub fn iter_pool(&self) -> std::slice::Iter<PoolItem> {
+        self.pool.iter()
     }
 }
 

@@ -4,7 +4,7 @@ use cafebabe::{attributes::{AnnotationElement, AnnotationElementValue, Attribute
 use once_cell::sync::Lazy;
 use serde::Serialize;
 
-use crate::{ext, jclass};
+use crate::{ext, jclass::{self, pool::PoolIter}};
 
 pub static PARSE_TIMES: Lazy<Mutex<HashMap<Box<str>, std::time::Duration>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
@@ -204,6 +204,21 @@ pub fn gather_str_index(p: impl AsRef<Path>) -> anyhow::Result<StrIndexMapped> {
     Ok(sidx.into())
 }
 
+pub fn gather_str_index_v2(p: impl AsRef<Path>) -> anyhow::Result<StrIndexMapped> {
+    let mut zip = ext::zip_open(p)?;
+    let mut sidx = StrIndex { classes: vec![], strings: HashMap::new() };
+    zip_each_jclass(&mut zip, |jcr| {
+        let name = jcr.class_name()?.to_string().into_boxed_str();
+        let sz = sidx.classes.len();
+        sidx.classes.push(name);
+        for x in jcr.iter_pool().by_type::<jclass::idx::Utf8>() {
+            sidx.strings.entry(x.to_string().into_boxed_str()).or_default().push(sz);
+        }
+        Ok(())
+    })?;
+    Ok(sidx.into())
+}
+
 #[derive(Serialize)]
 pub struct ModEntries {
     pub classes: Box<[Box<str>]>
@@ -232,6 +247,7 @@ pub fn scan_fabric_mod_entry(zipfile: &mut zip::ZipArchive<impl Read + Seek>, cl
     let mut zf = zipfile.by_name(&classfile)?;
     let mut buf = Vec::new();
     zf.read_to_end(&mut buf)?;
-    let cf = cafebabe::parse_class_with_options(&buf, cafebabe::ParseOptions::default().parse_bytecode(false))?;
-    Ok(cf.this_class.to_string().into_boxed_str())
+    let jcr = jclass::JClassReader::new(buf.as_slice())?;
+    let cn = jcr.class_name()?;
+    Ok(cn.to_string().into_boxed_str())
 }
