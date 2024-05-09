@@ -9,6 +9,7 @@ mod jvm;
 mod mc;
 mod slice;
 mod jclass;
+mod imp;
 
 use std::{collections::HashMap, sync::Arc, time::Instant};
 use tauri::{async_runtime, command, generate_context, generate_handler, http::Response, Manager, State};
@@ -28,6 +29,29 @@ async fn load(app: tauri::AppHandle, state: State<'_, WSLock>) -> Result<(), ()>
         }
         Ok(())
     }).map_err(|e| eprintln!("Error in load: {e}"))
+}
+
+#[command]
+async fn mod_dirs(app: tauri::AppHandle, state: State<'_, WSLock>, kind: imp::ReqModDirs) -> Result<imp::RespModDirs, ()> {
+    match kind {
+        imp::ReqModDirs::List => {
+            let v = imp::all_minecraft_dirs().map_err(|e| eprintln!("Error in mod_dirs: {e}"))?;
+            let v = v.into_iter().filter_map(|p| imp::get_mods_dir(&p)).collect();
+            Ok(imp::RespModDirs::Listed(v))
+        }
+        imp::ReqModDirs::Select(dir) => {
+            let astate = state.0.clone();
+            async_runtime::spawn(async move {
+                if let Err(e) = astate.lock().unwrap().prepare(dir.into()) {
+                    eprintln!("Opening workspace error: {e}");
+                }
+                if let Err(e) = app.emit("ws-open", true) {
+                    eprintln!("Opening workspace error: {e}");
+                }
+            });
+            Ok(imp::RespModDirs::Selected)
+        }
+    }
 }
 
 #[command]
@@ -156,7 +180,7 @@ fn main() {
     tauri::Builder::default()
         .manage(workspace::WSLock::new())
         .invoke_handler(generate_handler![
-            load, open_workspace, ws_files, ws_name, ws_mod_data, ws_str_index, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries, dbg_parse_times
+            load, mod_dirs, open_workspace, ws_files, ws_name, ws_mod_data, ws_str_index, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries, dbg_parse_times
         ])
         .register_asynchronous_uri_scheme_protocol("raw", |app, req, resp| {
             let now = std::time::Instant::now();
