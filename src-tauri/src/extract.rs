@@ -136,22 +136,21 @@ pub fn gather_tags(zipfile: &mut zip::ZipArchive<impl Read + Seek>) -> Result<Ta
         let filename = file.name().to_string();
         if let Some((ns, frest)) = filename.strip_prefix("data/").and_then(|fen| fen.split_once('/')) {
             if let Some((ptyp, prest)) = frest.strip_prefix("tags/").and_then(|fen| fen.split_once('/')) {
-                if let Some(tname) = prest.strip_suffix(".json") {
-                    let pe = tl.0.entry(ptyp.into()).or_default();
-                    let nx = format!("{ns}:{tname}").into_boxed_str();
-                    let tags: JsonTagsList = match serde_json::from_reader(&mut file) {
-                        Ok(t) => t,
-                        Err(e) => {
-                            eprintln!("In {filename}: {e}");
-                            return Ok(())
-                        }
-                    };
-                    let nm = pe.entry(nx).or_default();
-                    for te in tags.values.as_ref() {
-                        let tid = te.id();
-                        let tt = tid.strip_prefix('#').map_or_else(|| TagItem::Item(tid.into()), |x| TagItem::Tag(x.into()));
-                        *nm.entry(tt).or_default() += 1;
+                let tname = &prest[..prest.len() - 5];
+                let pe = tl.0.entry(ptyp.into()).or_default();
+                let nx = format!("{ns}:{tname}").into_boxed_str();
+                let tags: JsonTagsList = match serde_json::from_reader(&mut file) {
+                    Ok(t) => t,
+                    Err(e) => {
+                        eprintln!("In {filename}: {e}");
+                        return Ok(())
                     }
+                };
+                let nm = pe.entry(nx).or_default();
+                for te in tags.values.as_ref() {
+                    let tid = te.id();
+                    let tt = tid.strip_prefix('#').map_or_else(|| TagItem::Item(tid.into()), |x| TagItem::Tag(x.into()));
+                    *nm.entry(tt).or_default() += 1;
                 }
             }
         }

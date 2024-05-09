@@ -11,7 +11,7 @@ mod slice;
 mod jclass;
 mod imp;
 
-use std::{collections::HashMap, sync::Arc, time::Instant};
+use std::{borrow::Cow, collections::HashMap, sync::Arc, time::Instant};
 use tauri::{async_runtime, command, generate_context, generate_handler, http::Response, Manager, State};
 use uuid::Uuid;
 use workspace::{WSLock, WSMode};
@@ -35,8 +35,8 @@ async fn load(app: tauri::AppHandle, state: State<'_, WSLock>) -> Result<(), ()>
 async fn mod_dirs(app: tauri::AppHandle, state: State<'_, WSLock>, kind: imp::ReqModDirs) -> Result<imp::RespModDirs, ()> {
     match kind {
         imp::ReqModDirs::List => {
-            let v = imp::all_minecraft_dirs().map_err(|e| eprintln!("Error in mod_dirs: {e}"))?;
-            let v = v.into_iter().filter(|p| imp::get_mods_dir(p).is_some()).collect();
+            let mut v = imp::all_minecraft_dirs();
+            v.retain(|p| imp::get_mods_dir(p).is_some());
             Ok(imp::RespModDirs::Listed(v))
         }
         imp::ReqModDirs::Select(dir) => {
@@ -201,11 +201,11 @@ fn main() {
             async_runtime::spawn(async move {
                 let rb = Response::builder();
                 resp.respond(match get_img(&ws, req.uri().path()) {
-                    Some(Ok(data)) => rb.header("Content-Length", data.len()).body(data),
-                    None => rb.status(404).body(vec![]),
+                    Some(Ok(data)) => rb.header("Content-Length", data.len()).body(Cow::Owned(data)),
+                    None => rb.status(404).body(Cow::Borrowed(&[][..])),
                     Some(Err(e)) => {
                         eprintln!("{e}");
-                        rb.status(500).body(vec![])
+                        rb.status(500).body(Cow::Borrowed(&[][..]))
                     }
                 }.unwrap());
                 println!("Fetching image took {:?} -> {}", now.elapsed(), req.uri().path());
