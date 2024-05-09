@@ -36,13 +36,14 @@ async fn mod_dirs(app: tauri::AppHandle, state: State<'_, WSLock>, kind: imp::Re
     match kind {
         imp::ReqModDirs::List => {
             let v = imp::all_minecraft_dirs().map_err(|e| eprintln!("Error in mod_dirs: {e}"))?;
-            let v = v.into_iter().filter_map(|p| imp::get_mods_dir(&p)).collect();
+            let v = v.into_iter().filter(|p| imp::get_mods_dir(p).is_some()).collect();
             Ok(imp::RespModDirs::Listed(v))
         }
         imp::ReqModDirs::Select(dir) => {
             let astate = state.0.clone();
             async_runtime::spawn(async move {
-                if let Err(e) = astate.lock().unwrap().prepare(dir.into()) {
+                let Some(mdir) = imp::get_mods_dir(&dir) else { return; };
+                if let Err(e) = astate.lock().unwrap().prepare(mdir) {
                     eprintln!("Opening workspace error: {e}");
                 }
                 if let Err(e) = app.emit("ws-open", true) {
