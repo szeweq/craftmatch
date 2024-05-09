@@ -32,6 +32,9 @@ impl DirWS {
     pub fn new() -> Self {
         Self { dir_path: Box::from(Path::new("")), file_entries: Arc::new(RwLock::new(Vec::new())) }
     }
+    pub fn reset(&mut self) {
+        *self = Self::new();
+    }
     pub fn prepare(&mut self, dir_path: PathBuf) -> anyhow::Result<()> {
         self.dir_path = dir_path.into_boxed_path();
         let rdir = std::fs::read_dir(&self.dir_path)?;

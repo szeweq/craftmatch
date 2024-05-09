@@ -70,6 +70,18 @@ async fn open_workspace(app: tauri::AppHandle, state: State<'_, WSLock>) -> Resu
 }
 
 #[command]
+async fn close_workspace(app: tauri::AppHandle, state: State<'_, WSLock>) -> Result<(), ()> {
+    let astate = state.0.clone();
+    async_runtime::spawn(async move {
+        astate.lock().unwrap().reset();
+        if let Err(e) = app.emit("ws-open", false) {
+            eprintln!("Closing workspace error: {e}");
+        }
+    });
+    Ok(())
+}
+
+#[command]
 async fn ws_files(state: State<'_, WSLock>) -> Result<Vec<(uuid::Uuid, String)>, ()> {
     let x = state.file_entries().and_then(|afe| {
         let mut x = afe.read().map_err(|_| anyhow::anyhow!("fe read error"))?.iter()
@@ -180,7 +192,7 @@ fn main() {
     tauri::Builder::default()
         .manage(workspace::WSLock::new())
         .invoke_handler(generate_handler![
-            load, mod_dirs, open_workspace, ws_files, ws_name, ws_mod_data, ws_str_index, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries, dbg_parse_times
+            load, mod_dirs, open_workspace, close_workspace, ws_files, ws_name, ws_mod_data, ws_str_index, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries, dbg_parse_times
         ])
         .register_asynchronous_uri_scheme_protocol("raw", |app, req, resp| {
             let now = std::time::Instant::now();

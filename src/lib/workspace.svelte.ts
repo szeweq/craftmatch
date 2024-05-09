@@ -6,14 +6,20 @@ let wsOpen = $state(false)
 let files = $state<[UUID, string][]>([])
 let loadState = $state(0)
 
-listen("ws-open", e => wsOpen = !!e.payload).then(() => invoke("load"))
+listen("ws-open", e => {
+  const o = wsOpen
+  wsOpen = !!e.payload
+  if (o != wsOpen) loadState = 0
+  if (!wsOpen) files = []
+}).then(() => invoke("load"))
 
 export const ws = {
-    get open() { return wsOpen },
-    get files() { return files },
-    loadFiles() {
-        if (loadState > 0) return
-        wsFiles(d => files = d)
-        loadState = 1
+  get open() { return wsOpen },
+  get files() { return files },
+  loadFiles() {
+    wsOpen;
+    if (loadState > 0) return
+    wsFiles(d => files = d)
+    loadState = 1
     }
 }

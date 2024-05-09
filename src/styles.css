@@ -51,6 +51,7 @@ aside {
   display: flex;
   flex-flow: column nowrap;
   padding: 0.5rem;
+  gap: .5rem;
 }
 aside > .opts {
   flex: 1 0 auto;
