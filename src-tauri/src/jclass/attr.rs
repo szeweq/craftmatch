@@ -12,7 +12,7 @@ pub enum JAttr<T> {
     Deprecated,
     EnclosingMethod(AttrKey<KeyEnclosingMethod>),
     Exceptions,
-    InnerClasses,
+    InnerClasses(AttrKey<KeyInnerClasses>),
     LineNumberTable,
     LocalVariableTable,
     LocalVariableTypeTable,
@@ -31,7 +31,7 @@ pub enum JAttr<T> {
     RuntimeVisibleParameterAnnotations(AttrKey<KeyParamAnnotations>),
     RuntimeVisibleTypeAnnotations(AttrKey<KeyTypeAnnotations>),
     Signature(AttrKey<KeySignature>),
-    SourceDebugExtension,
+    SourceDebugExtension(AttrKey<KeySourceDebugExtension>),
     SourceFile(AttrKey<KeySourceFile>),
     StackMapTable,
     Synthetic,
@@ -47,7 +47,7 @@ impl<T> JAttr<T> {
             b"Deprecated" => Self::Deprecated,
             b"EnclosingMethod" => Self::EnclosingMethod(ak()),
             b"Exceptions" => Self::Exceptions,
-            b"InnerClasses" => Self::InnerClasses,
+            b"InnerClasses" => Self::InnerClasses(ak()),
             b"LineNumberTable" => Self::LineNumberTable,
             b"LocalVariableTable" => Self::LocalVariableTable,
             b"LocalVariableTypeTable" => Self::LocalVariableTypeTable,
@@ -66,7 +66,7 @@ impl<T> JAttr<T> {
             b"RuntimeVisibleParameterAnnotations" => Self::RuntimeVisibleParameterAnnotations(ak()),
             b"RuntimeVisibleTypeAnnotations" => Self::RuntimeVisibleTypeAnnotations(ak()),
             b"Signature" => Self::Signature(ak()),
-            b"SourceDebugExtension" => Self::SourceDebugExtension,
+            b"SourceDebugExtension" => Self::SourceDebugExtension(ak()),
             b"SourceFile" => Self::SourceFile(ak()),
             b"StackMapTable" => Self::StackMapTable,
             b"Synthetic" => Self::Synthetic,
@@ -122,7 +122,7 @@ impl AttrMatch for OfClass {
             JAttr::BootstrapMethods |
             JAttr::Deprecated |
             JAttr::EnclosingMethod(_) |
-            JAttr::InnerClasses |
+            JAttr::InnerClasses(_) |
             JAttr::Module |
             JAttr::ModuleMainClass |
             JAttr::ModulePackages |
@@ -133,7 +133,7 @@ impl AttrMatch for OfClass {
             JAttr::RuntimeVisibleAnnotations(_) |
             JAttr::RuntimeVisibleTypeAnnotations(_) |
             JAttr::Signature(_) |
-            JAttr::SourceDebugExtension |
+            JAttr::SourceDebugExtension(_) |
             JAttr::SourceFile(_) |
             JAttr::Synthetic
         )
@@ -220,7 +220,13 @@ impl UseAttr for KeyEnclosingMethod {
     }
 }
 // impl UseAttr for KeyExceptions {}
-// impl UseAttr for KeyInnerClasses {}
+impl UseAttr for KeyInnerClasses {
+    type Out = Iter<InnerClass>;
+    fn parse(mut b: Bytes, pool: &ClassPool) -> anyhow::Result<Self::Out> {
+        let len = b.get_u16();
+        Ok(Iter { b, pool: pool.clone(), cur: 0, len, _t: PhantomData })
+    }
+}
 // impl UseAttr for KeyLineNumberTable {}
 // impl UseAttr for KeyLocalVariableTable {}
 // impl UseAttr for KeyLocalVariableTypeTable {}
@@ -256,7 +262,12 @@ impl UseAttr for KeySignature {
         pool.get_::<Utf8>(b.get_u16()).cloned()
     }
 }
-// impl UseAttr for KeySourceDebugExtension {}
+impl UseAttr for KeySourceDebugExtension {
+    type Out = JStr;
+    fn parse(b: Bytes, _pool: &ClassPool) -> anyhow::Result<Self::Out> {
+        Ok(JStr::from(b.to_vec().into_boxed_slice()))
+    }
+}
 impl UseAttr for KeySourceFile {
     type Out = JStr;
     fn parse(mut b: Bytes, pool: &ClassPool) -> anyhow::Result<Self::Out> {
@@ -270,7 +281,6 @@ pub trait Parsing {
 }
 
 pub struct Data<T> {
-    b: Bytes,
     pool: ClassPool,
     data: T
 }
@@ -282,9 +292,8 @@ impl<T> Deref for Data<T> {
 }
 impl<T: Parsing> Parsing for Data<T> {
     fn parse(b: &mut Bytes, pool: &ClassPool) -> anyhow::Result<Self> {
-        let mut b = b.clone();
-        let d = T::parse(&mut b, pool)?;
-        Ok(Self { b, pool: pool.clone(), data: d })
+        let d = T::parse(b, pool)?;
+        Ok(Self { pool: pool.clone(), data: d })
     }
 }
 
@@ -313,9 +322,26 @@ impl<T: Parsing> Iterator for Iter<T> {
     }
 }
 
+pub struct InnerClass {
+    inner_class: Index<ClassInfo>,
+    outer_class: Option<Index<ClassInfo>>,
+    name: Option<Index<Utf8>>,
+    access_flags: u16
+}
+impl Parsing for InnerClass {
+    fn parse(b: &mut Bytes, _pool: &ClassPool) -> anyhow::Result<Self> {
+        let inner_class = Index::try_from(b.get_u16())?;
+        let outer_class = Index::maybe(b.get_u16());
+        let name = Index::maybe(b.get_u16());
+        let access_flags = b.get_u16();
+        Ok(Self { inner_class, outer_class, name, access_flags })
+    }
+}
+
 pub struct Annotation {
     type_idx: Index<Utf8>,
-    elems_len: u16
+    elems_len: u16,
+    b: Bytes
 }
 impl Data<Annotation> {
     pub fn type_name(&self) -> anyhow::Result<JStr> {
