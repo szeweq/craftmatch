@@ -1,6 +1,6 @@
 use std::{collections::HashMap, io::{Read, Seek}, path::Path, sync::Mutex};
 
-use cafebabe::{attributes::{AnnotationElement, AnnotationElementValue, AttributeData}, constant_pool::{ConstantPoolItem, LiteralConstant}};
+use cafebabe::attributes::{AnnotationElement, AnnotationElementValue, AttributeData};
 use once_cell::sync::Lazy;
 use serde::Serialize;
 
@@ -8,16 +8,14 @@ use crate::{ext, jclass::{self, pool::PoolIter}};
 
 pub static PARSE_TIMES: Lazy<Mutex<HashMap<Box<str>, std::time::Duration>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
-fn parse_class_safe(b: &[u8], bytecode: bool) -> anyhow::Result<cafebabe::ClassFile<'_>> {
+fn parse_class_safe(b: &[u8], bytecode: bool) -> Result<cafebabe::ClassFile<'_>, cafebabe::ParseError> {
     let now = std::time::Instant::now();
     match cafebabe::parse_class_with_options(b, cafebabe::ParseOptions::default().parse_bytecode(bytecode)) {
         Ok(x) => {
             PARSE_TIMES.lock().unwrap().insert(x.this_class.clone().into(), now.elapsed());
             Ok(x)
         }
-        Err(e) => {
-            Err(anyhow::anyhow!("Parsing failed (in {:?}): {:?}", now.elapsed(), e))
-        }
+        e => e
     }
 }
 
@@ -54,24 +52,6 @@ where F: FnMut(jclass::JClassReader<&mut zip::read::ZipFile, jclass::AtInterface
 //         f(&parse_class_safe(&buf, bytecode)?)
 //     })
 // }
-
-pub fn gather_inheritance(p: impl AsRef<Path>) -> anyhow::Result<ext::Inheritance> {
-    let mut zip = ext::zip_open(p)?;
-    let mut inh = ext::Inheritance::new();
-    zip_each_class(&mut zip, false, |cf| {
-        let ci = inh.find(&cf.this_class);
-        if let Some(ref s) = cf.super_class {
-            if s != "java/lang/Object" {
-                inh.add_inherit(ci, s);
-            }
-        }
-        for cif in &cf.interfaces {
-            inh.add_inherit(ci, cif);
-        }
-        Ok(())
-    })?;
-    Ok(inh)
-}
 
 pub fn gather_inheritance_v2(p: impl AsRef<Path>) -> anyhow::Result<ext::Inheritance> {
     let mut zip = ext::zip_open(p)?;
@@ -185,23 +165,6 @@ impl From<StrIndex> for StrIndexMapped {
         strings.sort();
         Self { classes, strings }
     }
-}
-
-pub fn gather_str_index(p: impl AsRef<Path>) -> anyhow::Result<StrIndexMapped> {
-    let mut zip = ext::zip_open(p)?;
-    let mut sidx = StrIndex { classes: vec![], strings: HashMap::new() };
-    zip_each_class(&mut zip, true, |cf| {
-        let name = cf.this_class.to_string().into_boxed_str();
-        let sz = sidx.classes.len();
-        sidx.classes.push(name);
-        for cp in cf.constantpool_iter() {
-            if let ConstantPoolItem::LiteralConstant(LiteralConstant::String(x)) = cp {
-                sidx.strings.entry(x.to_string().into_boxed_str()).or_default().push(sz);
-            }
-        }
-        Ok(())
-    })?;
-    Ok(sidx.into())
 }
 
 pub fn gather_str_index_v2(p: impl AsRef<Path>) -> anyhow::Result<StrIndexMapped> {
