@@ -177,6 +177,23 @@ async fn ws_tags(state: State<'_, WSLock>, mode: WSMode) -> Result<Arc<extract::
     x
 }
 #[command]
+async fn ws_recipes(state: State<'_, WSLock>, mode: WSMode) -> Result<Arc<extract::RecipeTypeMap>, ()> {
+    let now = Instant::now();
+    let x = state.file_entries().and_then(|afe| {
+        match mode {
+            WSMode::Generic(force) => {
+                afe.gather_with(force, workspace::gather_recipes)?;
+                let fe = &*afe.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
+                Ok(Arc::new(fe.iter().filter_map(workspace::FileInfo::get).collect()))
+            }
+            WSMode::Specific(id) => afe.gather_by_id(id, workspace::gather_recipes)
+        }
+    }).map_err(|e| eprintln!("Error in ws_recipes: {e}"));
+    println!("gather_recipes took {:?}", now.elapsed());
+    x
+}
+
+#[command]
 async fn ws_mod_entries(state: State<'_, WSLock>, id: Uuid) -> Result<Arc<jvm::ModEntries>, ()> {
     state.file_entries()
         .and_then(|afe| afe.gather_by_id(id, workspace::gather_mod_entries))
@@ -193,7 +210,7 @@ fn main() {
     tauri::Builder::default()
         .manage(workspace::WSLock::new())
         .invoke_handler(generate_handler![
-            load, mod_dirs, open_workspace, close_workspace, ws_files, ws_name, ws_mod_data, ws_str_index, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries, dbg_parse_times
+            load, mod_dirs, open_workspace, close_workspace, ws_files, ws_name, ws_mod_data, ws_str_index, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries, ws_recipes, dbg_parse_times
         ])
         .register_asynchronous_uri_scheme_protocol("raw", |app, req, resp| {
             let now = std::time::Instant::now();

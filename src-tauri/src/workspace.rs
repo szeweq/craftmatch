@@ -158,3 +158,6 @@ pub fn gather_mod_entries(fi: &FileInfo) -> anyhow::Result<jvm::ModEntries> {
     let Some(moddata) = fi.get::<manifest::ModTypeData>() else { return Err(anyhow::anyhow!("No moddata")) };
     manifest::extract_mod_entries(&mut ext::zip_open(&fi.path)?, moddata.as_ref())
 }
+pub fn gather_recipes(fi: &FileInfo) -> anyhow::Result<extract::RecipeTypeMap> {
+    extract::gather_recipes(&mut ext::zip_open(&fi.path)?)
+}

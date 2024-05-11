@@ -43,16 +43,6 @@ where F: FnMut(jclass::JClassReader<&mut zip::read::ZipFile, jclass::AtInterface
     })
 }
 
-// #[inline]
-// fn zip_find_class<F, T>(zip: &mut zip::ZipArchive<impl Read + Seek>, bytecode: bool, mut f: F) -> anyhow::Result<Option<T>>
-// where for<'a> F: FnMut(&'a cafebabe::ClassFile<'a>) -> anyhow::Result<Option<T>> {
-//     ext::zip_find_by_extension(zip, ext::Extension::Class, |mut zf| {
-//         let mut buf = Vec::new();
-//         zf.read_to_end(&mut buf)?;
-//         f(&parse_class_safe(&buf, bytecode)?)
-//     })
-// }
-
 pub fn gather_inheritance_v2(p: impl AsRef<Path>) -> anyhow::Result<ext::Inheritance> {
     let mut zip = ext::zip_open(p)?;
     let mut inh = ext::Inheritance::new();

@@ -52,6 +52,7 @@ export const wsContentSizes = invokeWithMode<Record<ContentTypes, [number, numbe
 export const wsInheritance = invokeWithMode<Inheritance>('ws_inheritance')
 export const wsComplexity = invokeWithMode<Complexity>('ws_complexity')
 export const wsTags = invokeWithMode<Tags>('ws_tags')
+export const wsRecipes = invokeWithMode<Record<string, string[]>>('ws_recipes')
 
 
 function invokeAndListen<T>(cmd: string, event: string) {

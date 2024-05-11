@@ -11,6 +11,7 @@
 <nav class="py-1">
   <a role="button" href="/jar/{data.id}/strings">Strings</a>
   <a role="button" href="/jar/{data.id}/sizes">Sizes</a>
+  <a role="button" href="/jar/{data.id}/recipes">Recipes</a>
 </nav>
 {#each data.mods as m (m.slug)}
   <div class="px-2">

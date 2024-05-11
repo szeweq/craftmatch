@@ -166,3 +166,47 @@ pub fn get_img_data(zip: &mut zip::ZipArchive<impl Read + Seek>, name: &str) -> 
     file.read_exact(&mut buf).ok()?;
     Some(buf)
 }
+
+#[derive(Deserialize)]
+pub struct RecipeData {
+    #[serde(rename = "type")]
+    pub typ: Box<str>,
+}
+
+#[derive(Serialize)]
+pub struct RecipeTypeMap(HashMap<Box<str>, Vec<Box<str>>>);
+impl RecipeTypeMap {
+    pub fn extend(&mut self, other: &Self) {
+        for (k, v) in &other.0 {
+            self.0.entry(k.clone()).or_default().extend_from_slice(v.as_slice());
+        }
+    }
+}
+impl <R> FromIterator<R> for RecipeTypeMap where R: AsRef<Self> {
+    fn from_iter<T: IntoIterator<Item = R>>(iter: T) -> Self {
+        iter.into_iter().fold(Self(HashMap::new()), |mut acc, x| { acc.extend(x.as_ref()); acc })
+    }
+}
+
+pub fn gather_recipes(zipfile: &mut zip::ZipArchive<impl Read + Seek>) -> Result<RecipeTypeMap> {
+    let mut recipes: HashMap<Box<str>, Vec<Box<str>>> = HashMap::new();
+    ext::zip_each_by_extension(zipfile, Extension::Json, |mut file| {
+        let filename = file.name().to_string();
+        if let Some((ns, frest)) = filename.strip_prefix("data/").and_then(|fen| fen.split_once('/')) {
+            if let Some(pname) = frest.strip_prefix("recipes/") {
+                let tname = &pname[..pname.len() - 5];
+                let nx = format!("{ns}:{tname}").into_boxed_str();
+                let recipe: RecipeData = match serde_json::from_reader(&mut file) {
+                    Ok(t) => t,
+                    Err(e) => {
+                        eprintln!("In {filename}: {e}");
+                        return Ok(())
+                    }
+                };
+                recipes.entry(recipe.typ).or_default().push(nx);
+            }
+        }
+        Ok(())
+    })?;
+    Ok(RecipeTypeMap(recipes))
+}
