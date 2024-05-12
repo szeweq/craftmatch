@@ -63,4 +63,4 @@ function invokeAndListen<T>(cmd: string, event: string) {
   }
 }
 
-export const wsFiles = invokeAndListen<[UUID, string][]>('ws_files', 'ws-files')
+export const wsFiles = invokeAndListen<[UUID, string, number][]>('ws_files', 'ws-files')

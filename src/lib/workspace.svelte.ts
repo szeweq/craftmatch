@@ -3,7 +3,7 @@ import { listen } from "@tauri-apps/api/event"
 import { wsFiles } from "./ws"
 
 let wsOpen = $state(false)
-let files = $state<[UUID, string][]>([])
+let files = $state<[UUID, string, number][]>([])
 let loadState = $state(0)
 
 listen("ws-open", e => {
