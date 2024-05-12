@@ -8,6 +8,7 @@
     const d = new Date(parseInt(id.slice(0, 8) + id.slice(9, 13), 16))
     return d.toISOString()
   }
+  const kbfmt = new Intl.NumberFormat('en-US', {style: 'unit', unit: 'kilobyte', unitDisplay: 'short'})
 </script>
 
 {#if !ws.open}
@@ -29,8 +30,8 @@
     <span>Mods found: {ws.files.length}</span>
   </section>
   <FilesList class="text-sm b-2 b-solid b-white/40 rounded-md list-none mx-0 my-2 text-truncate" q={fileQuery}>
-    {#snippet item(id, f)}
-      <li><a class="block c-inherit hover:c-inherit! p-1 hover:bg-white/20" href={`/jar/${id}`} title={uuidv7time(id)}>{f}</a></li>
+    {#snippet item(id, f, n)}
+      <li><a class="block c-inherit hover:c-inherit! p-1 hover:bg-white/20" href={`/jar/${id}`} title={uuidv7time(id)}>{f} ({kbfmt.formatToParts(n / 1024).map(x => x.value).join("")})</a></li>
     {/snippet}
   </FilesList>
 {/if}

@@ -83,10 +83,10 @@ async fn close_workspace(app: tauri::AppHandle, state: State<'_, WSLock>) -> Res
 }
 
 #[command]
-async fn ws_files(state: State<'_, WSLock>) -> Result<Vec<(uuid::Uuid, String)>, ()> {
+async fn ws_files(state: State<'_, WSLock>) -> Result<Vec<(uuid::Uuid, String, u64)>, ()> {
     let x = state.file_entries().and_then(|afe| {
         let mut x = afe.read().map_err(|_| anyhow::anyhow!("fe read error"))?.iter()
-            .map(|fe| (fe.id, fe.name()))
+            .map(|fe| (fe.id, fe.name(), fe.size()))
             .collect::<Vec<_>>();
         x.sort_by_cached_key(|x| x.1.to_lowercase());
         Ok(x)

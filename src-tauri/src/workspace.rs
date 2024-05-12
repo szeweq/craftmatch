@@ -1,4 +1,4 @@
-use std::{path::{Path, PathBuf}, sync::{Arc, Mutex, RwLock}};
+use std::{fs, io, path::{Path, PathBuf}, sync::{Arc, Mutex, RwLock}};
 
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 use serde::Deserialize;
@@ -104,6 +104,9 @@ impl FileInfo {
     }
     pub fn name(&self) -> String {
         self.path.file_name().unwrap().to_string_lossy().to_string()
+    }
+    pub fn size(&self) -> u64 {
+        std::fs::metadata(&self.path).map_or(0, |md| md.len())
     }
     pub fn get<T: Send + Sync + 'static>(&self) -> Option<Arc<T>> {
         self.datamap.try_get::<Arc<T>>().cloned()
