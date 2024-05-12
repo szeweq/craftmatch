@@ -36,6 +36,9 @@ export async function openWorkspace() {
   return await invoke<boolean>('open_workspace')
 }
 
+export async function wsShow(id: UUID) {
+  return await invoke<boolean>('ws_show', {id})
+}
 export async function wsName(id: UUID) {
   return await invoke<string>('ws_name', {id})
 }

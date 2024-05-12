@@ -89,7 +89,7 @@ fn id_from_time(time: std::time::SystemTime) -> anyhow::Result<Uuid> {
 
 pub struct FileInfo {
     pub id: Uuid,
-    path: Box<Path>,
+    pub path: Box<Path>,
     datamap: TypeMap![Send + Sync]
 }
 impl FileInfo {

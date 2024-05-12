@@ -95,6 +95,18 @@ async fn ws_files(state: State<'_, WSLock>) -> Result<Vec<(uuid::Uuid, String, u
 }
 
 #[command]
+async fn ws_show(state: State<'_, WSLock>, id: uuid::Uuid) -> Result<(), ()> {
+    state.file_entries().and_then(|afe| {
+        let fe = &*afe.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
+        let path = match fe.binsearch_key_map(&id, |fe| fe.id, |fe| Ok(fe.path.clone())) {
+            Ok(path) => path,
+            Err(e) => return Err(e),
+        };
+        Ok(opener::reveal(path)?)
+    }).map_err(|e| eprintln!("Error in ws_show: {e}"))
+}
+
+#[command]
 async fn ws_name(state: State<'_, WSLock>, id: uuid::Uuid) -> Result<String, ()> {
     state.file_entries().and_then(|afe| {
         let fe = &*afe.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
@@ -210,7 +222,7 @@ fn main() {
     tauri::Builder::default()
         .manage(workspace::WSLock::new())
         .invoke_handler(generate_handler![
-            load, mod_dirs, open_workspace, close_workspace, ws_files, ws_name, ws_mod_data, ws_str_index, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries, ws_recipes, dbg_parse_times
+            load, mod_dirs, open_workspace, close_workspace, ws_files, ws_show, ws_name, ws_mod_data, ws_str_index, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries, ws_recipes, dbg_parse_times
         ])
         .register_asynchronous_uri_scheme_protocol("raw", |app, req, resp| {
             let now = std::time::Instant::now();
