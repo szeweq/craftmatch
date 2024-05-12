@@ -1,5 +1,6 @@
 <script lang="ts">
   import Paginator from '$lib/Paginator.svelte'
+    import { useUnitFmt } from '$lib/intl.svelte';
   import { filterBy, sortBy } from '$lib/query'
   const perPage = 40
   let {data}: { data: import('./$types').PageData } = $props()
@@ -10,7 +11,7 @@
   let pages = $derived(Math.ceil(queried.length / perPage))
   let sortCount = $state(false)
   let sorted = $derived(sortBy(queried, sortCount, ([,j]) => j))
-  const timeFmt = new Intl.NumberFormat('en', {style: 'unit', unit: 'microsecond', unitDisplay: 'short'})
+  let timeFmt = useUnitFmt('microsecond')
 </script>
 <h1>Debug – parsing times</h1>
 <section class="sticky top-0 rounded-md b-solid b-white/40 b-2 bgvar-c-bg1 p-1">
@@ -21,6 +22,6 @@
 </section>
 <ul class="text-xs">
   {#each sorted.slice(page * perPage, (page + 1) * perPage) as [k, v] (k)}
-    <li>{k}: {timeFmt.format(1e6 * v)}</li>
+    <li>{k}: {timeFmt(1e6 * v)}</li>
   {/each}
 </ul>

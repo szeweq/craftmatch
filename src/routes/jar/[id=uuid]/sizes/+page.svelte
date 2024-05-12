@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { useUnitFmt, percentFmt } from '$lib/intl.svelte';
   import type { ContentTypes } from '$lib/ws';
 
   let {data}: { data: import('./$types').PageData } = $props()
@@ -23,13 +24,12 @@
   function typeFmt(n: [number, number, number], i: number) {
     switch (i) {
       case 0: return n[0]
-      case 1: return inKB.format(n[1] / 1024)
-      case 2: return inKB.format(n[2] / 1024)
-      default: return percent.format(n[1] && n[2] / n[1])
+      case 1: return inKB(n[1] / 1024)
+      case 2: return inKB(n[2] / 1024)
+      default: return percentFmt(n[1] && n[2] / n[1])
     }
   }
-  const inKB = new Intl.NumberFormat('en-US', {maximumFractionDigits: 2, style: 'unit', unit: 'kilobyte'})
-  const percent = new Intl.NumberFormat('en-US', {maximumFractionDigits: 2, style: 'percent'})
+  let inKB = useUnitFmt('kilobyte', 2)
 </script>
 <h1>File info</h1>
 <div>{data.name}</div>
