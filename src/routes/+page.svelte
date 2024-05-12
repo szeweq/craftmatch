@@ -7,6 +7,7 @@
   let fileQuery = $state("")
   const uuidv7time = (id: UUID) => new Date(parseInt(id.slice(0, 8) + id.slice(9, 13), 16))
   let kbfmt = useUnitFmt('kilobyte')
+  let sortSize = $state(false)
 </script>
 
 {#if !ws.open}
@@ -26,8 +27,12 @@
   <section class="sticky top-0 rounded-md b-solid b-white/40 b-2 bgvar-c-bg1 p-1">
     <input type="text" bind:value={fileQuery} placeholder="Search files...">
     <span>Mods found: {ws.files.length}</span>
+    <label>
+      <input type="checkbox" bind:checked={sortSize} />
+      <span>Sort by size</span>
+    </label>
   </section>
-  <FilesList class="text-sm b-2 b-solid b-white/40 rounded-md list-none mx-0 my-2 text-truncate" q={fileQuery}>
+  <FilesList class="text-sm b-2 b-solid b-white/40 rounded-md list-none mx-0 my-2 text-truncate" q={fileQuery} sortSize={sortSize}>
     {#snippet item(id, f, n)}
       <li><a class="block c-inherit hover:c-inherit! p-1 hover:bg-white/20" href={`/jar/${id}`}>
         <div>{f}</div>
