@@ -32,7 +32,7 @@ header {
 ::-webkit-scrollbar {
   height: 0.5rem;
   width: 0.5rem;
-  background-color: #161616;
+  background-color: var(--c-bg2);
 }
 ::-webkit-scrollbar-thumb {
   background-color: #fff4;
@@ -47,7 +47,7 @@ header {
 aside {
   grid-area: a;
   width: var(--s-aside);
-  background-color: #161616;
+  background-color: var(--c-bg2);
   display: flex;
   flex-flow: column nowrap;
   padding: 0.5rem;
@@ -275,4 +275,12 @@ img:not([is-broken]) + span.img-error {
 
 ul {
   padding: 0;
+}
+[popover] {
+  margin: 0;
+  background-color: var(--c-bg2);
+  border: 2px solid var(--c-bg1);
+}
+[popover] button, [popover] a[role="button"] {
+  background-color: transparent;
 }
