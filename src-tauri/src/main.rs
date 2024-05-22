@@ -126,18 +126,17 @@ fn ws_str_index(state: State<'_, WSLock>, id: uuid::Uuid) -> Option<Arc<jvm::Str
         afe.gather_by_id(id, workspace::gather_str_index)
     }).inspect_err(|e| eprintln!("Error in ws_str_index: {e}")).ok()
 }
+#[command]
+fn ws_file_type_sizes(state: State<'_, WSLock>, mode: WSMode) -> Option<Arc<extract::ModFileTypeSizes>> {
+    state.file_entries().and_then(|afe| {
+        mode.gather_from_entries(afe, workspace::gather_file_type_sizes)
+    }).inspect_err(|e| eprintln!("Error in ws_file_type_sizes: {e}")).ok()
+}
 
 #[command]
 fn ws_content_sizes(state: State<'_, WSLock>, mode: WSMode) -> Option<Arc<extract::ModContentSizes>> {
     state.file_entries().and_then(|afe| {
-        match mode {
-            WSMode::Generic(force) => {
-                afe.gather_with(force, workspace::gather_content_sizes)?;
-                let fe = &*afe.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
-                Ok(Arc::new(fe.iter().filter_map(workspace::FileInfo::get).collect()))
-            }
-            WSMode::Specific(id) => afe.gather_by_id(id, workspace::gather_content_sizes)
-        }
+        mode.gather_from_entries(afe, workspace::gather_content_sizes)
     }).inspect_err(|e| eprintln!("Error in ws_content_sizes: {e}")).ok()
 }
 #[command]
@@ -222,7 +221,7 @@ fn main() {
     tauri::Builder::default()
         .manage(workspace::WSLock::new())
         .invoke_handler(generate_handler![
-            load, mod_dirs, open_workspace, close_workspace, ws_files, ws_show, ws_name, ws_mod_data, ws_str_index, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries, ws_recipes, dbg_parse_times
+            load, mod_dirs, open_workspace, close_workspace, ws_files, ws_show, ws_name, ws_mod_data, ws_str_index, ws_file_type_sizes, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries, ws_recipes, dbg_parse_times
         ])
         .register_asynchronous_uri_scheme_protocol("raw", |app, req, resp| {
             let now = std::time::Instant::now();

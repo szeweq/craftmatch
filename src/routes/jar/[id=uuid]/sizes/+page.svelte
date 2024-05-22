@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { useUnitFmt, percentFmt } from '$lib/intl.svelte';
+  import { useUnitFmt, percentFmt } from '$lib/intl.svelte';
   import type { ContentTypes } from '$lib/ws';
 
   let {data}: { data: import('./$types').PageData } = $props()

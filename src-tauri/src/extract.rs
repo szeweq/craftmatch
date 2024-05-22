@@ -3,7 +3,30 @@ use std::{collections::HashMap, io::{Read, Seek}, path::Path};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
-use crate::ext::{self, Extension};
+use crate::{ext::{self, Extension}, slice::ExtendSelf};
+
+#[derive(Serialize)]
+pub struct ModFileTypeSizes(HashMap<Box<str>, [usize; 3]>);
+impl ModFileTypeSizes {
+    pub fn new() -> Self {
+        Self(HashMap::new())
+    }
+}
+impl ExtendSelf for ModFileTypeSizes {
+    fn extend(&mut self, other: &Self) {
+        for (k, v) in &other.0 {
+            let av = self.0.entry(k.clone()).or_default();
+            for i in 0..3 {
+                av[i] += v[i];
+            }
+        }
+    }
+}
+impl <R> FromIterator<R> for ModFileTypeSizes where R: AsRef<Self> {
+    fn from_iter<T: IntoIterator<Item = R>>(iter: T) -> Self {
+        iter.into_iter().fold(Self::new(), Self::folding)
+    }
+}
 
 #[derive(Serialize, Clone, Copy)]
 pub struct ModContentSizes {
@@ -31,6 +54,25 @@ impl <R> FromIterator<R> for ModContentSizes where R: AsRef<Self> {
     fn from_iter<T: IntoIterator<Item = R>>(iter: T) -> Self {
         iter.into_iter().fold(Self::new(), |mut acc, x| { acc.extend(x.as_ref()); acc })
     }
+}
+
+pub fn compute_file_type_sizes(jar_path: impl AsRef<Path>) -> Result<ModFileTypeSizes> {
+    let mut zipfile = ext::zip_open(jar_path)?;
+    let mut mfts = ModFileTypeSizes::new();
+    ext::zip_each(&mut zipfile, |file| {
+        let fname = file.name();
+        if file.is_dir() { return Ok(()) }
+        let ext = match fname.rsplit_once('.') {
+            None | Some(("", _)) | Some((_, "")) => "".into(),
+            Some((_, x)) => x.to_lowercase().into_boxed_str()
+        };
+        let op = mfts.0.entry(ext).or_default();
+        op[0] += 1;
+        op[1] += file.size() as usize;
+        op[2] += file.compressed_size() as usize;
+        Ok(())
+    })?;
+    Ok(mfts)
 }
 
 pub fn compute_mod_content_sizes(jar_path: impl AsRef<Path>) -> Result<ModContentSizes> {

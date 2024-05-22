@@ -1,4 +1,4 @@
-use std::{fs, io, path::{Path, PathBuf}, sync::{Arc, Mutex, RwLock}};
+use std::{path::{Path, PathBuf}, sync::{Arc, Mutex, RwLock}};
 
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 use serde::Deserialize;
@@ -133,6 +133,18 @@ pub enum WSMode {
     Generic(bool),
     Specific(Uuid),
 }
+impl WSMode {
+    pub fn gather_from_entries<T: Send + Sync + FromIterator<Arc<T>> + 'static>(self, entries: Arc<RwLock<Vec<FileInfo>>>, gfn: Gatherer<T>) -> anyhow::Result<Arc<T>> {
+        match self {
+            Self::Generic(force) => {
+                entries.gather_with(force, gfn)?;
+                let fe = &*entries.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
+                Ok(Arc::new(fe.iter().filter_map(FileInfo::get::<T>).collect()))
+            }
+            Self::Specific(id) => entries.gather_by_id(id, gfn)
+        }
+    }
+}
 
 pub type Gatherer<T> = fn(&FileInfo) -> anyhow::Result<T>;
 
@@ -141,6 +153,9 @@ pub fn gather_mod_data(fi: &FileInfo) -> anyhow::Result<manifest::ModTypeData> {
     let x = manifest::extract_mod_info(&fi.path);
     println!("gather_mod_data ({}) took {:?}", fi.name(), now.elapsed());
     x
+}
+pub fn gather_file_type_sizes(fi: &FileInfo) -> anyhow::Result<extract::ModFileTypeSizes> {
+    extract::compute_file_type_sizes(&fi.path)
 }
 pub fn gather_content_sizes(fi: &FileInfo) -> anyhow::Result<extract::ModContentSizes> {
     extract::compute_mod_content_sizes(&fi.path)

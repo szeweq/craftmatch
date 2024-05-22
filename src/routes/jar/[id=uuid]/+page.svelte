@@ -13,6 +13,7 @@
   <button onclick={() => wsShow(data.id)}>Show</button>
   <a role="button" href="/jar/{data.id}/strings">Strings</a>
   <a role="button" href="/jar/{data.id}/sizes">Sizes</a>
+  <a role="button" href="/jar/{data.id}/filetypes">File types</a>
   <a role="button" href="/jar/{data.id}/recipes">Recipes</a>
 </nav>
 {#each data.mods as m (m.slug)}

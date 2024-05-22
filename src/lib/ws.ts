@@ -51,6 +51,7 @@ export async function wsStrIndex(id: UUID) {
 export async function wsModEntries(id: UUID) {
   return await invoke<{}>('ws_mod_entries', {id})
 }
+export const wsFileTypeSizes = invokeWithMode<Record<string, [number, number, number]>>('ws_file_type_sizes')
 export const wsContentSizes = invokeWithMode<Record<ContentTypes, [number, number, number]>>('ws_content_sizes')
 export const wsInheritance = invokeWithMode<Inheritance>('ws_inheritance')
 export const wsComplexity = invokeWithMode<Complexity>('ws_complexity')

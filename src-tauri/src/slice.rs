@@ -26,3 +26,11 @@ impl <I> BinSearchExt for [I] {
         )
     }
 }
+
+pub trait ExtendSelf: Sized {
+    fn extend(&mut self, other: &Self);
+    fn folding<R: AsRef<Self>>(mut self, other: R) -> Self {
+        self.extend(other.as_ref());
+        self
+    }
+}
