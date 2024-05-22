@@ -9,14 +9,7 @@ import { invoke } from "@tauri-apps/api/core"
 import { goto } from "$app/navigation"
 let {children} = $props()
 let backEnabled = $state(false)
-//let path = $state("")
-$effect.pre(() => {
-  page.subscribe(p => {
-    backEnabled = p.url.pathname !== "/"
-    //path = p.url.pathname
-    //console.log(p.url.pathname)
-  })
-})
+$effect.pre(() => page.subscribe(p => backEnabled = p.url.pathname !== "/"))
 let settingsOpen = $state(false)
 </script>
 <svelte:document onerror={e => console.log(e)} />
