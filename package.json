@@ -16,16 +16,16 @@
   "devDependencies": {
     "@iconify-json/material-symbols": "^1.1.80",
     "@sveltejs/adapter-static": "^3.0.1",
-    "@sveltejs/kit": "^2.5.9",
+    "@sveltejs/kit": "^2.5.10",
     "@sveltejs/vite-plugin-svelte": "^3.1.0",
     "@tsconfig/svelte": "^5.0.4",
-    "@unocss/extractor-svelte": "^0.60.2",
-    "@unocss/preset-icons": "^0.60.2",
-    "svelte": "5.0.0-next.136",
+    "@unocss/extractor-svelte": "^0.60.3",
+    "@unocss/preset-icons": "^0.60.3",
+    "svelte": "5.0.0-next.137",
     "svelte-check": "^3.7.1",
     "tslib": "^2.6.2",
     "typescript": "^5.4.5",
-    "unocss": "^0.60.2",
+    "unocss": "^0.60.3",
     "vite": "^5.2.11"
   }
 }
