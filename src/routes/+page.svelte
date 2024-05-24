@@ -4,6 +4,7 @@
   import { dateFmt, useUnitFmt } from "$lib/intl.svelte"
   import { ws } from "$lib/workspace.svelte"
   import { wsShow } from "$lib/ws"
+  import type { ToggleEventHandler } from "svelte/elements"
   
   let fileQuery = $state("")
   const uuidv7time = (id: UUID) => new Date(parseInt(id.slice(0, 8) + id.slice(9, 13), 16))
@@ -11,13 +12,24 @@
   let sortSize = $state(false)
   let lastSelected = $state<UUID | null>(null)
   let menupos = $state<[number, number]>([0, 0])
+  let activePopover = $state<HTMLElement | null>(null)
   const showMenu = (e: HTMLElement, id: UUID) => {
+    if (lastSelected == id) return
     lastSelected = id
     const rect = e.getBoundingClientRect()
     menupos = [rect.bottom, rect.right - rect.left]
+    requestAnimationFrame(() => activePopover?.showPopover())
+  }
+  const closePopover = () => activePopover?.hidePopover()
+  const popoverToggle: ToggleEventHandler<HTMLElement> = e => {
+    const elemMain = document.querySelector('main')
+    if (e.oldState === "open") {
+      elemMain.removeEventListener('scroll', closePopover)
+    } else {
+      elemMain.addEventListener('scroll', closePopover, true)
+    }
   }
 </script>
-
 {#if !ws.open}
   <Welcome />
 {:else}
@@ -32,7 +44,7 @@
     </nav>
   </div>
   <h2>Files</h2>
-  <section class="sticky top-0 rounded-md b-solid b-white/40 b-2 bgvar-c-bg1 p-1">
+  <section class="sticky top-0 rounded-md b-solid b-white/40 b-2 bgvar-c-bg1 p-1 z-1">
     <input type="text" bind:value={fileQuery} placeholder="Search files...">
     <span>Mods found: {ws.files.length}</span>
     <label>
@@ -52,7 +64,7 @@
       </li>
     {/snippet}
   </FilesList>
-  <div id="file-opts" popover="auto" class="rounded-md p-2 left-unset" style={`top: ${menupos[0]}px; right: ${menupos[1]}px`}>
+  <div bind:this={activePopover} id="file-opts" popover="auto" class="rounded-md p-2 left-unset" style={`top: ${menupos[0]}px; right: ${menupos[1]}px`} ontoggle={popoverToggle}>
     {#if lastSelected}
       <nav class="f flex-col">
         <a role="button" href="/jar/{lastSelected}/strings">Strings</a>
