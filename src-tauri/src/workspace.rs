@@ -19,18 +19,18 @@ impl WSLock {
             f(&ws)
         })
     }
-    pub fn file_entries(&self) -> anyhow::Result<Arc<RwLock<Vec<FileInfo>>>> {
-        self.locking(|ws| Ok(ws.file_entries.clone()))
+    pub fn mods(&self) -> anyhow::Result<Arc<RwLock<Vec<FileInfo>>>> {
+        self.locking(|ws| Ok(ws.mod_entries.clone()))
     }
 }
 
 pub struct DirWS {
     pub dir_path: Box<Path>,
-    file_entries: Arc<RwLock<Vec<FileInfo>>>,
+    mod_entries: Arc<RwLock<Vec<FileInfo>>>,
 }
 impl DirWS {
     pub fn new() -> Self {
-        Self { dir_path: Box::from(Path::new("")), file_entries: Arc::new(RwLock::new(Vec::new())) }
+        Self { dir_path: Box::from(Path::new("")), mod_entries: Arc::new(RwLock::new(Vec::new())) }
     }
     pub fn reset(&mut self) {
         *self = Self::new();
@@ -50,11 +50,11 @@ impl DirWS {
             }
         }).collect::<Vec<_>>();
         jars.sort_unstable_by_key(|fe| fe.id);
-        *self.file_entries.write().unwrap() = jars;
+        *self.mod_entries.write().unwrap() = jars;
         Ok(())
     }
     pub fn entry_path(&self, id: Uuid) -> anyhow::Result<Box<Path>> {
-        let fe = self.file_entries.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
+        let fe = self.mod_entries.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
         let fi = fe.iter().find(|fe| fe.id == id).ok_or_else(|| anyhow::anyhow!("file not found"))?;
         let p = fi.path.clone();
         drop(fe);
