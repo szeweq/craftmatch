@@ -11,7 +11,7 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@tauri-apps/api": "2.0.0-beta.11"
+    "@tauri-apps/api": "2.0.0-beta.12"
   },
   "devDependencies": {
     "@iconify-json/material-symbols": "^1.1.80",
@@ -21,7 +21,7 @@
     "@tsconfig/svelte": "^5.0.4",
     "@unocss/extractor-svelte": "^0.60.3",
     "@unocss/preset-icons": "^0.60.3",
-    "svelte": "5.0.0-next.137",
+    "svelte": "5.0.0-next.141",
     "svelte-check": "^3.7.1",
     "tslib": "^2.6.2",
     "typescript": "^5.4.5",
