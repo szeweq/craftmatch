@@ -111,7 +111,7 @@ a[role="button"] {
   font-family: inherit;
   color: #ffffff;
   background-color: #0f0f0fa0;
-  transition: border-color 0.2s;
+  transition: border-color 0.1s;
 }
 select {
   appearance: button;
@@ -283,4 +283,13 @@ ul {
 }
 [popover] button, [popover] a[role="button"] {
   background-color: transparent;
+}
+
+th.sort-asc::after {
+  content: '\2191';
+  padding-inline-start: .25rem;
+}
+th.sort-desc::after {
+  content: '\2193';
+  padding-inline-start: .25rem;
 }
