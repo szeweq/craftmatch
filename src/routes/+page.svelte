@@ -40,6 +40,7 @@
       <a role="button" href="/all/tags">Tags</a>
       <a role="button" href="/all/inheritance">Inheritance</a>
       <a role="button" href="/all/complexity">Complexity</a>
+      <a role="button" href="/all/filetypes">File types</a>
       <a role="button" href="/dbg/parse_times">Parse times</a>
     </nav>
   </div>
