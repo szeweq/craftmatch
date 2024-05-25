@@ -201,7 +201,7 @@ pub fn gather_tags(zipfile: &mut zip::ZipArchive<impl Read + Seek>) -> Result<Ta
     Ok(tl)
 }
 
-pub fn get_img_data(zip: &mut zip::ZipArchive<impl Read + Seek>, name: &str) -> Option<Vec<u8>> {
+pub fn get_raw_data(zip: &mut zip::ZipArchive<impl Read + Seek>, name: &str) -> Option<Vec<u8>> {
     let idx = zip.index_for_name(name)?;
     let mut file = zip.by_index(idx).ok()?;
     let mut buf = vec![0; file.size() as usize];

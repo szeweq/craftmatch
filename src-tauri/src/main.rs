@@ -228,7 +228,7 @@ fn main() {
             let ws = app.state::<WSLock>().inner().clone();
             async_runtime::spawn(async move {
                 let rb = Response::builder();
-                resp.respond(match get_img(&ws, req.uri().path()) {
+                resp.respond(match get_raw(&ws, req.uri().path()) {
                     Some(Ok(data)) => rb.header("Content-Length", data.len()).body(Cow::Owned(data)),
                     None => rb.status(404).body(Cow::Borrowed(&[][..])),
                     Some(Err(e)) => {
@@ -244,7 +244,7 @@ fn main() {
 }
 
 #[inline]
-fn get_img(ws: &WSLock, uri_path: &str) -> Option<anyhow::Result<Vec<u8>>> {
+fn get_raw(ws: &WSLock, uri_path: &str) -> Option<anyhow::Result<Vec<u8>>> {
     let (s_id, path) = uri_path[1..].split_once('/')?;
     let id = Uuid::try_parse(s_id).ok()?;
     let f = ws.locking(|ws| ws.entry_path(id)).ok()?;
@@ -252,5 +252,5 @@ fn get_img(ws: &WSLock, uri_path: &str) -> Option<anyhow::Result<Vec<u8>>> {
         Ok(x) => x,
         Err(e) => { return Some(Err(e)) }
     };
-    extract::get_img_data(&mut zip, path).map(Ok)
+    extract::get_raw_data(&mut zip, path).map(Ok)
 }
