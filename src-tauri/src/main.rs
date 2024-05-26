@@ -212,6 +212,13 @@ async fn ws_mod_entries(state: State<'_, WSLock>, id: Uuid) -> Result<Arc<jvm::M
 }
 
 #[command]
+fn ws_mod_playable(state: State<'_, WSLock>, id: Uuid) -> Result<Arc<extract::PlayableFiles>, ()> {
+    state.mods()
+        .and_then(|afe| afe.gather_by_id(id, workspace::gather_playable))
+        .map_err(|e| eprintln!("Error in ws_mod_playable: {e}"))
+}
+
+#[command]
 fn dbg_parse_times() -> HashMap<Box<str>, f64> {
     let m = jvm::PARSE_TIMES.lock().unwrap();
     m.iter().map(|(k, v)| (k.clone(), v.as_secs_f64())).collect()
@@ -221,7 +228,7 @@ fn main() {
     tauri::Builder::default()
         .manage(workspace::WSLock::new())
         .invoke_handler(generate_handler![
-            load, mod_dirs, open_workspace, close_workspace, ws_files, ws_show, ws_name, ws_mod_data, ws_str_index, ws_file_type_sizes, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries, ws_recipes, dbg_parse_times
+            load, mod_dirs, open_workspace, close_workspace, ws_files, ws_show, ws_name, ws_mod_data, ws_str_index, ws_file_type_sizes, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries, ws_recipes, ws_mod_playable, dbg_parse_times
         ])
         .register_asynchronous_uri_scheme_protocol("raw", |app, req, resp| {
             let now = std::time::Instant::now();
@@ -236,7 +243,7 @@ fn main() {
                         rb.status(500).body(Cow::Borrowed(&[][..]))
                     }
                 }.unwrap());
-                println!("Fetching image took {:?} -> {}", now.elapsed(), req.uri().path());
+                println!("Fetching data took {:?} -> {}", now.elapsed(), req.uri().path());
             });
         })
         .run(generate_context!())

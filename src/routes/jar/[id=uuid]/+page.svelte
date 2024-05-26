@@ -15,6 +15,7 @@
   <a role="button" href="/jar/{data.id}/sizes">Sizes</a>
   <a role="button" href="/jar/{data.id}/filetypes">File types</a>
   <a role="button" href="/jar/{data.id}/recipes">Recipes</a>
+  <a role="button" href="/jar/{data.id}/player">Player</a>
 </nav>
 {#each data.mods as m (m.slug)}
   <div class="px-2">

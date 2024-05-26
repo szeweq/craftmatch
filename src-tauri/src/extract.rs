@@ -252,3 +252,17 @@ pub fn gather_recipes(zipfile: &mut zip::ZipArchive<impl Read + Seek>) -> Result
     })?;
     Ok(RecipeTypeMap(recipes))
 }
+
+#[derive(Serialize)]
+pub struct PlayableFiles(Box<[Box<str>]>);
+
+pub fn gather_playable_files(zipfile: &mut zip::ZipArchive<impl Read + Seek>) -> Result<PlayableFiles> {
+    let mut files = Vec::new();
+    ext::zip_each_by_extension(zipfile, Extension::Ogg, |file| {
+        let filename = file.name().to_string().into_boxed_str();
+        files.push(filename);
+        Ok(())
+    })?;
+    files.sort();
+    Ok(PlayableFiles(files.into_boxed_slice()))
+}

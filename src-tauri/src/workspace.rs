@@ -179,3 +179,6 @@ pub fn gather_mod_entries(fi: &FileInfo) -> anyhow::Result<jvm::ModEntries> {
 pub fn gather_recipes(fi: &FileInfo) -> anyhow::Result<extract::RecipeTypeMap> {
     extract::gather_recipes(&mut ext::zip_open(&fi.path)?)
 }
+pub fn gather_playable(fi: &FileInfo) -> anyhow::Result<extract::PlayableFiles> {
+    extract::gather_playable_files(&mut ext::zip_open(&fi.path)?)
+}

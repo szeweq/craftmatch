@@ -45,6 +45,9 @@ export async function wsName(id: UUID) {
 export async function wsModData(id: UUID) {
   return await invoke<(ModData | null)>('ws_mod_data', {id})
 }
+export async function wsModPlayable(id: UUID) {
+  return await invoke<(string[] | null)>('ws_mod_playable', {id})
+}
 export async function wsStrIndex(id: UUID) {
   return await invoke<(StrIndex | null)>('ws_str_index', {id})
 }
