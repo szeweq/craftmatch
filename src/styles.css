@@ -17,18 +17,6 @@ body {
   font-size: .875rem;
 }
 
-header {
-  grid-area: h;
-  background-color: #0f0f0f;
-  color: #f6f6f6;
-  padding: 0.25rem;
-  height: 2.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  overflow-x: auto;
-  overflow-y: hidden;
-}
 ::-webkit-scrollbar {
   height: 0.5rem;
   width: 0.5rem;
@@ -110,7 +98,7 @@ a[role="button"] {
   font-weight: 500;
   font-family: inherit;
   color: #ffffff;
-  background-color: #0f0f0fa0;
+  background-color: rgb(var(--cx1) / .625);
   transition: border-color 0.1s;
 }
 select {
@@ -118,7 +106,7 @@ select {
   -webkit-appearance: button;
 }
 select > option {
-  background-color: #0f0f0f;
+  background-color: rgb(var(--cx1));
 }
 
 aside button, dialog button {
@@ -167,7 +155,7 @@ button:not(:disabled):hover, select:not(:disabled):hover, a[role="button"]:hover
 }
 button:not(:disabled):active, select:not(:disabled):active, a[role="button"]:active {
   border-color: var(--c-ring);
-  background-color: #0f0f0f68;
+  background-color: rgb(var(--cx1) / .4);
 }
 input[type="text"]:active, input[type="text"]:focus {
   border-inline-color: var(--c-ring);
@@ -239,13 +227,13 @@ h3 {
 p { margin-block: 0.25rem; }
 
 dialog {
-  border: 2px solid #0f0f0f;
+  border: 2px solid rgb(var(--cx1));
   border-radius: 0.5rem;
   padding: 0.5rem;
   min-width: 16rem;
 }
 dialog::backdrop {
-  background-color: #0f0f0f80;
+  background-color: rgb(var(--cx1) / .5);
 }
 dialog > section {
   display: flex;
@@ -259,7 +247,7 @@ dialog nav:last-child {
 }
 
 .darken:not([hidden]) {
-  background-color: #0f0f0f40;
+  background-color: rgb(var(--cx1) / .25);
   backdrop-filter: blur(4px);
 }
 .blurry {
