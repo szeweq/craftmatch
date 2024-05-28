@@ -5,13 +5,15 @@ let {data}: { data: import('./$types').PageData } = $props()
 let selected = $state(-1)
 </script>
 <div class="f flex-col text-xs">
-  {#each data.files as f, i}
+  {#if data.files.length > 0}{#each data.files as f, i}
     <label><input type="radio" bind:group={selected} value={i} hidden /><span>{f}</span></label>
-  {/each}
+  {/each}{:else}
+    <div>It seems that this mod does not have any audio files.</div>
+  {/if}
 </div>
 <div class="sticky bottom-0 left-[calc(var(--s-aside)+1rem)] right-4">
   {#if selected >= 0 && selected < data.files.length}
     {@const m = data.files[selected]}
-    <audio class="w-full" controls autoplay src={convertFileSrc(data.id, 'raw') + '/' + m}></audio>
+    <audio class="w-full" controls autoplay src={convertFileSrc(data.id, 'raw') + '/' + m} preload="auto"></audio>
   {/if}
 </div>
