@@ -4,6 +4,8 @@ use serde::Serialize;
 use anyhow::Result;
 use zip::ZipArchive;
 
+use crate::{iter_extend, slice::ExtendSelf};
+
 
 pub enum Extension {
     Empty,
@@ -97,19 +99,13 @@ pub fn zip_find_by_extension<T>(zip: &mut ZipArchive<impl Read + Seek>, ext: Ext
     Ok(None)
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Default)]
 pub struct Inheritance {
     pub indices: Vec<(Box<str>, usize)>,
     pub inherits: Vec<Vec<usize>>,
 }
 #[allow(dead_code)]
 impl Inheritance {
-    pub fn new() -> Self {
-        Self {
-            indices: vec![],
-            inherits: vec![],
-        }
-    }
     pub fn name_by_index(&self, index: usize) -> Box<str> {
         self.indices.iter().find(|(_, i)| *i == index).map_or_else(|| Box::from(format!("#{index}")), |(n, _)| Box::from(n.as_ref()))
         //self.indices.binary_search_by_key(&&index, |(_, i)| i).map_or_else(|_| Cow::from(format!("#{index}")), |i| Cow::from(&self.indices[i].0))
@@ -152,7 +148,9 @@ impl Inheritance {
         }
         false
     }
-    pub fn extend(&mut self, other: &Self) {
+}
+impl ExtendSelf for Inheritance {
+    fn extend(&mut self, other: &Self) {
         for (n, oi) in &other.indices {
             let i = self.find(n);
             let v = &mut self.inherits[i];
@@ -161,9 +159,4 @@ impl Inheritance {
         }
     }
 }
-
-impl <R> FromIterator<R> for Inheritance where R: AsRef<Self> {
-    fn from_iter<T: IntoIterator<Item = R>>(iter: T) -> Self {
-        iter.into_iter().fold(Self::new(), |mut acc, x| { acc.extend(x.as_ref()); acc })
-    }
-}
+iter_extend!(Inheritance);
