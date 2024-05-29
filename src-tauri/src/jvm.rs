@@ -45,7 +45,7 @@ where F: FnMut(jclass::JClassReader<&mut zip::read::ZipFile, jclass::AtInterface
 
 pub fn gather_inheritance_v2(p: impl AsRef<Path>) -> anyhow::Result<ext::Inheritance> {
     let mut zip = ext::zip_open(p)?;
-    let mut inh = ext::Inheritance::new();
+    let mut inh = ext::Inheritance::default();
     zip_each_jclass(&mut zip, |jcr| {
         let ajcn = jcr.class_name()?;
         let cname = std::str::from_utf8(ajcn)?;
@@ -157,7 +157,7 @@ impl From<StrIndex> for StrIndexMapped {
     }
 }
 
-pub fn gather_str_index_v2(p: impl AsRef<Path>) -> anyhow::Result<StrIndexMapped> {
+pub fn gather_str_index_v2(p: &Path) -> anyhow::Result<StrIndexMapped> {
     let mut zip = ext::zip_open(p)?;
     let mut sidx = StrIndex { classes: vec![], strings: HashMap::new() };
     zip_each_jclass(&mut zip, |jcr| {
