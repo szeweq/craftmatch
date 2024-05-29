@@ -10,7 +10,7 @@
     }
   })
 </script>
-<dialog bind:this={dialog} class="w-1/2">
+<dialog bind:this={dialog} class="w-50vw">
   <section>
     <h2>About</h2>
     <div>Craftmatch</div>
