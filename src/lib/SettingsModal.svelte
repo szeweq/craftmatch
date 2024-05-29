@@ -17,7 +17,7 @@
     <div>by Szeweq</div>
     <div>
       <label>
-        <input type="checkbox" bind:checked={settings.loc}>
+        <input id="loc" type="checkbox" bind:checked={settings.loc}>
         <span>Use local language for formatting</span>
       </label>
       <div>Current language: {currentLang()}</div>
