@@ -4,6 +4,8 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 let {data}: { data: import('./$types').PageData } = $props()
 let selected = $state(-1)
 </script>
+<h1>Player</h1>
+<p>Files from: {data.name}</p>
 <div class="f flex-col text-xs">
   {#if data.files.length > 0}{#each data.files as f, i}
     <label><input type="radio" bind:group={selected} value={i} hidden /><span>{f}</span></label>
