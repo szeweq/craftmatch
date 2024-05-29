@@ -3,15 +3,10 @@ use std::{collections::HashMap, io::{Read, Seek}, path::Path};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
-use crate::{ext::{self, Extension}, slice::ExtendSelf};
+use crate::{ext::{self, Extension}, slice::{ExtendSelf, iter_extend}};
 
-#[derive(Serialize)]
+#[derive(Serialize, Default)]
 pub struct ModFileTypeSizes(HashMap<Box<str>, [usize; 3]>);
-impl ModFileTypeSizes {
-    pub fn new() -> Self {
-        Self(HashMap::new())
-    }
-}
 impl ExtendSelf for ModFileTypeSizes {
     fn extend(&mut self, other: &Self) {
         for (k, v) in &other.0 {
@@ -22,13 +17,9 @@ impl ExtendSelf for ModFileTypeSizes {
         }
     }
 }
-impl <R> FromIterator<R> for ModFileTypeSizes where R: AsRef<Self> {
-    fn from_iter<T: IntoIterator<Item = R>>(iter: T) -> Self {
-        iter.into_iter().fold(Self::new(), Self::folding)
-    }
-}
+iter_extend!(ModFileTypeSizes);
 
-#[derive(Serialize, Clone, Copy)]
+#[derive(Serialize, Clone, Copy, Default)]
 pub struct ModContentSizes {
     meta: [usize; 3],
     classes: [usize; 3],
@@ -36,11 +27,8 @@ pub struct ModContentSizes {
     data: [usize; 3],
     other: [usize; 3]
 }
-impl ModContentSizes {
-    pub const fn new() -> Self {
-        Self { meta: [0, 0, 0], classes: [0, 0, 0], assets: [0, 0, 0], data: [0, 0, 0], other: [0, 0, 0] }
-    }
-    pub fn extend(&mut self, other: &Self) {
+impl ExtendSelf for ModContentSizes {
+    fn extend(&mut self, other: &Self) {
         for i in 0..3 {
             self.meta[i] += other.meta[i];
             self.classes[i] += other.classes[i];
@@ -50,15 +38,11 @@ impl ModContentSizes {
         }
     }
 }
-impl <R> FromIterator<R> for ModContentSizes where R: AsRef<Self> {
-    fn from_iter<T: IntoIterator<Item = R>>(iter: T) -> Self {
-        iter.into_iter().fold(Self::new(), |mut acc, x| { acc.extend(x.as_ref()); acc })
-    }
-}
+iter_extend!(ModContentSizes);
 
 pub fn compute_file_type_sizes(jar_path: impl AsRef<Path>) -> Result<ModFileTypeSizes> {
     let mut zipfile = ext::zip_open(jar_path)?;
-    let mut mfts = ModFileTypeSizes::new();
+    let mut mfts = ModFileTypeSizes::default();
     ext::zip_each(&mut zipfile, |file| {
         let fname = file.name();
         if file.is_dir() { return Ok(()) }
@@ -77,13 +61,7 @@ pub fn compute_file_type_sizes(jar_path: impl AsRef<Path>) -> Result<ModFileType
 
 pub fn compute_mod_content_sizes(jar_path: impl AsRef<Path>) -> Result<ModContentSizes> {
     let mut zipfile = ext::zip_open(jar_path)?;
-    let mut mcs = ModContentSizes {
-        meta: [0, 0, 0],
-        classes: [0, 0, 0],
-        assets: [0, 0, 0],
-        data: [0, 0, 0],
-        other: [0, 0, 0]
-    };
+    let mut mcs = ModContentSizes::default();
     ext::zip_each(&mut zipfile, |file| {
         let fname = file.name();
         let op = match fname.split_once('/').map(|x| x.0) {
