@@ -40,8 +40,8 @@ impl ExtendSelf for ModContentSizes {
 }
 iter_extend!(ModContentSizes);
 
-pub fn compute_file_type_sizes(jar_path: impl AsRef<Path>) -> Result<ModFileTypeSizes> {
-    let mut zipfile = ext::zip_open(jar_path)?;
+pub fn compute_file_type_sizes(jar_path: &Path) -> Result<ModFileTypeSizes> {
+    let mut zipfile = ext::zip_open_mem(jar_path)?;
     let mut mfts = ModFileTypeSizes::default();
     ext::zip_each(&mut zipfile, |file| {
         let fname = file.name();
@@ -59,8 +59,8 @@ pub fn compute_file_type_sizes(jar_path: impl AsRef<Path>) -> Result<ModFileType
     Ok(mfts)
 }
 
-pub fn compute_mod_content_sizes(jar_path: impl AsRef<Path>) -> Result<ModContentSizes> {
-    let mut zipfile = ext::zip_open(jar_path)?;
+pub fn compute_mod_content_sizes(jar_path: &Path) -> Result<ModContentSizes> {
+    let mut zipfile = ext::zip_open_mem(jar_path)?;
     let mut mcs = ModContentSizes::default();
     ext::zip_each(&mut zipfile, |file| {
         let fname = file.name();
@@ -234,13 +234,10 @@ pub fn gather_recipes(zipfile: &mut zip::ZipArchive<impl Read + Seek>) -> Result
 #[derive(Serialize)]
 pub struct PlayableFiles(Box<[Box<str>]>);
 
-pub fn gather_playable_files(zipfile: &mut zip::ZipArchive<impl Read + Seek>) -> Result<PlayableFiles> {
-    let mut files = Vec::new();
-    ext::zip_each_by_extension(zipfile, Extension::Ogg, |file| {
-        let filename = file.name().to_string().into_boxed_str();
-        files.push(filename);
-        Ok(())
-    })?;
+pub fn gather_playable_files(zipfile: &zip::ZipArchive<impl Read + Seek>) -> Result<PlayableFiles> {
+    let mut files = zipfile.file_names()
+        .filter(|&x| x.ends_with(".ogg")).map(|x| x.into())
+        .collect::<Vec<_>>();
     files.sort();
     Ok(PlayableFiles(files.into_boxed_slice()))
 }

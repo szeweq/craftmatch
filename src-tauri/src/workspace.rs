@@ -164,7 +164,7 @@ pub fn gather_complexity(fi: &FileInfo) -> anyhow::Result<jvm::Complexity> {
     jvm::gather_complexity(&fi.path)
 }
 pub fn gather_tags(fi: &FileInfo) -> anyhow::Result<extract::TagsList> {
-    extract::gather_tags(&mut ext::zip_open(&fi.path)?)
+    extract::gather_tags(&mut ext::zip_open_mem(&fi.path)?)
 }
 pub fn gather_str_index(fi: &FileInfo) -> anyhow::Result<jvm::StrIndexMapped> {
     jvm::gather_str_index_v2(&fi.path)
@@ -174,8 +174,8 @@ pub fn gather_mod_entries(fi: &FileInfo) -> anyhow::Result<jvm::ModEntries> {
     manifest::extract_mod_entries(&mut ext::zip_open(&fi.path)?, moddata.as_ref())
 }
 pub fn gather_recipes(fi: &FileInfo) -> anyhow::Result<extract::RecipeTypeMap> {
-    extract::gather_recipes(&mut ext::zip_open(&fi.path)?)
+    extract::gather_recipes(&mut ext::zip_open_mem(&fi.path)?)
 }
 pub fn gather_playable(fi: &FileInfo) -> anyhow::Result<extract::PlayableFiles> {
-    extract::gather_playable_files(&mut ext::zip_open(&fi.path)?)
+    extract::gather_playable_files(&ext::zip_open(&fi.path)?)
 }

@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, ffi::OsStr, fs::File, io::{BufReader, Read, Seek}, path::Path};
+use std::{collections::VecDeque, ffi::OsStr, fs::File, io::{BufReader, Cursor, Read, Seek}, path::Path};
 
 use serde::Serialize;
 use anyhow::Result;
@@ -57,6 +57,10 @@ impl Extension {
 
 pub fn zip_open(p: impl AsRef<Path>) -> anyhow::Result<ZipArchive<BufReader<File>>> {
     Ok(ZipArchive::new(BufReader::new(File::open(p)?))?)
+}
+
+pub fn zip_open_mem(p: impl AsRef<Path>) -> anyhow::Result<ZipArchive<Cursor<Vec<u8>>>> {
+    Ok(ZipArchive::new(Cursor::new(std::fs::read(p)?))?)
 }
 
 #[inline]
