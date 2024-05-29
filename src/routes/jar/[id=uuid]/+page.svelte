@@ -31,9 +31,9 @@
         <div class="c-amber text-xs">YES! The version contains a dollar sign.</div>
       {/if}
     {/if}
-    <div class="text-sm">This mod is developed for {data.type} (or alike).</div>
+    <div class="text-xs">This mod is developed for {data.type} (or alike).</div>
     {#if m.logo_path}<div>
-      <img src={convertFileSrc(data.id, 'raw') + '/' + m.logo_path} alt="logo" class="min-w-16 max-w-1/2" onerror={imgError} />
+      <img src={convertFileSrc(data.id, 'raw') + '/' + m.logo_path} alt="logo" class="min-w-16 max-w-48" onerror={imgError} />
       <span class="img-error c-amber text-xs">Failed to load image: {m.logo_path}</span>
     </div>{/if}
   </div>
