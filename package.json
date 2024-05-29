@@ -11,7 +11,7 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@tauri-apps/api": "2.0.0-beta.12"
+    "@tauri-apps/api": "2.0.0-beta.13"
   },
   "devDependencies": {
     "@iconify-json/material-symbols": "^1.1.80",
@@ -26,6 +26,6 @@
     "tslib": "^2.6.2",
     "typescript": "^5.4.5",
     "unocss": "^0.60.3",
-    "vite": "^5.2.11"
+    "vite": "^5.2.12"
   }
 }
