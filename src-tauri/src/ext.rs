@@ -33,7 +33,7 @@ impl Extension {
         else if x.eq_ignore_ascii_case("properties") { Self::Properties }
         else if x.eq_ignore_ascii_case("mf") { Self::Mf }
         else if x.eq_ignore_ascii_case("jar") { Self::Jar }
-        else { Self::Other(x.to_string_lossy().into_owned().to_ascii_lowercase().into_boxed_str()) }
+        else { Self::Other(x.to_ascii_lowercase().to_string_lossy().into_owned().into_boxed_str()) }
     }
     const fn str(&self) -> &str {
         match self {
