@@ -149,10 +149,7 @@ impl WSMode {
 pub type Gatherer<T> = fn(&FileInfo) -> anyhow::Result<T>;
 
 pub fn gather_mod_data(fi: &FileInfo) -> anyhow::Result<manifest::ModTypeData> {
-    let now = std::time::Instant::now();
-    let x = manifest::extract_mod_info(&fi.path);
-    println!("gather_mod_data ({}) took {:?}", fi.name(), now.elapsed());
-    x
+    manifest::extract_mod_info(&fi.path)
 }
 pub fn gather_file_type_sizes(fi: &FileInfo) -> anyhow::Result<extract::ModFileTypeSizes> {
     extract::compute_file_type_sizes(&fi.path)
