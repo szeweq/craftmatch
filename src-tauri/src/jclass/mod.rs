@@ -28,7 +28,7 @@ impl Deref for JStr {
 }
 impl std::fmt::Debug for JStr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "\"{}\"", String::from_utf8_lossy(&self.0))
+        write!(f, "{:?}", String::from_utf8_lossy(&self.0))
     }
 }
 impl std::fmt::Display for JStr {
@@ -206,8 +206,14 @@ impl<T> AttrInfo<T> {
     }
 }
 
-trait Step {
-    type Next;
+pub struct ClassData {
+    access_flags: u16,
+    class_ref: Index<ClassInfo>,
+    super_ref: Option<Index<ClassInfo>>,
+}
+
+pub trait Step {
+    type Next: Step;
 }
 
 pub enum AtInterfaces {}
@@ -226,19 +232,19 @@ pub enum AtAttributes {}
 impl Step for AtAttributes {
     type Next = ();
 }
+impl Step for () {
+    type Next = ();
+}
 
-pub struct JClassReader<R: Read, At> {
+pub struct JClassReader<R: Read, At: Step> {
     r: R,
     pool: ClassPool,
     minor: u16,
     major: u16,
-    access_flags: u16,
-    class_ref: Index<ClassInfo>,
-    super_ref: Option<Index<ClassInfo>>,
+    data: ClassData,
     _t: PhantomData<At>
 }
 
-#[allow(private_bounds)]
 impl <R: Read, At: Step> JClassReader<R, At> {
     fn step(self) -> anyhow::Result<JClassReader<R, At::Next>> {
         Ok(JClassReader {
@@ -246,20 +252,18 @@ impl <R: Read, At: Step> JClassReader<R, At> {
             pool: self.pool,
             minor: self.minor,
             major: self.major,
-            access_flags: self.access_flags,
-            class_ref: self.class_ref,
-            super_ref: self.super_ref,
+            data: self.data,
             _t: PhantomData
         })
     }
 }
 
-impl <R: Read, At> JClassReader<R, At> {
+impl <R: Read, At: Step> JClassReader<R, At> {
     pub fn class_name(&self) -> anyhow::Result<&JStr> {
-        self.pool.get(self.pool.get(self.class_ref)?)
+        self.pool.get(self.pool.get(self.data.class_ref)?)
     }
     pub fn super_class(&self) -> anyhow::Result<Option<&JStr>> {
-        match self.super_ref {
+        match self.data.super_ref {
             None => Ok(None),
             Some(super_ref) => Ok(Some(self.pool.get(self.pool.get(super_ref)?)?)),
         }
@@ -283,7 +287,8 @@ impl <R: Read> JClassReader<R, AtInterfaces> {
         let mut pool = Vec::with_capacity(pool_count as usize);
         pool.push(PoolItem::None);
         while pool.len() < pool.capacity() {
-            let tag = r.read_u8()?;
+            let mut tag = 0u8;
+            r.read_exact(std::slice::from_mut(&mut tag))?;
             pool.push(PoolItem::read_from(tag, major, &mut r)?);
             if tag == 5 || tag == 6 {
                 pool.push(PoolItem::Reserved)
@@ -297,7 +302,7 @@ impl <R: Read> JClassReader<R, AtInterfaces> {
         };
         let class_ref = class_ref.try_into()?;
         let super_ref = Index::maybe(super_ref);
-        Ok(Self { r, pool, minor, major, access_flags, class_ref, super_ref, _t: PhantomData })
+        Ok(Self { r, pool, minor, major, data: ClassData { access_flags, class_ref, super_ref }, _t: PhantomData })
     }
 
     #[inline]
@@ -311,7 +316,7 @@ impl <R: Read> JClassReader<R, AtInterfaces> {
     pub fn skip_interfaces(mut self) -> anyhow::Result<JClassReader<R, AtFields>> {
         let l = self.r.read_u16::<BE>()?;
         for _ in 0..l {
-            self.r.read_u16::<BE>()?;
+            self.r.read_exact(&mut [0u8; 2])?;
         }
         self.step()
     }
