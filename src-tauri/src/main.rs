@@ -243,7 +243,7 @@ fn main() {
                         rb.status(500).body(Cow::Borrowed(&[][..]))
                     }
                 }.unwrap());
-                println!("Fetching data took {:?} -> {}", now.elapsed(), req.uri().path());
+                println!("Fetching took {:?} -> {}", now.elapsed(), req.uri().path());
             });
         })
         .run(generate_context!())
