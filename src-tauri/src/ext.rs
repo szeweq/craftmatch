@@ -106,12 +106,12 @@ pub struct Inheritance {
 }
 #[allow(dead_code)]
 impl Inheritance {
-    pub fn name_by_index(&self, index: usize) -> Box<str> {
-        self.indices.iter().find(|(_, i)| *i == index).map_or_else(|| Box::from(format!("#{index}")), |(n, _)| Box::from(n.as_ref()))
+    pub fn name_by_index(&self, index: usize) -> Option<&str> {
+        self.indices.iter().find(|(_, i)| *i == index).map(|(n, _)| n.as_ref())
         //self.indices.binary_search_by_key(&&index, |(_, i)| i).map_or_else(|_| Cow::from(format!("#{index}")), |i| Cow::from(&self.indices[i].0))
     }
-    pub fn iter_inherits(&self, index: usize) -> impl Iterator<Item = Box<str>> + '_ {
-        self.inherits[index].iter().map(|&i| self.name_by_index(i))
+    pub fn iter_inherits(&self, index: usize) -> impl Iterator<Item = &str> + '_ {
+        self.inherits[index].iter().filter_map(|&i| self.name_by_index(i))
     }
     pub fn find(&mut self, name: &str) -> usize {
         match self.indices.binary_search_by_key(&name, |(n, _)| n) {
@@ -129,14 +129,6 @@ impl Inheritance {
         self.inherits[index].push(ni);
         ni
     }
-    pub fn iter_tree(&self, index: usize) -> impl Iterator<Item = Box<str>> + '_ {
-        let mut q = VecDeque::new();
-        q.push_back(index);
-        std::iter::from_fn(move || {
-            let i = q.pop_front()?;
-            Some(self.name_by_index(i))
-        })
-    }
     pub fn inherits(&self, index: usize, name: &str) -> bool {
         let mut q = VecDeque::new();
         q.push_back(index);
@@ -153,8 +145,13 @@ impl ExtendSelf for Inheritance {
     fn extend(&mut self, other: &Self) {
         for (n, oi) in &other.indices {
             let i = self.find(n);
-            let v = &mut self.inherits[i];
-            v.extend_from_slice(&other.inherits[*oi]);
+            let v: &mut Vec<usize> = unsafe {
+                std::mem::transmute(&mut self.inherits[i])
+            };
+            for x in other.inherits[*oi].iter().filter_map(|&k| other.name_by_index(k)) {
+                let nk = self.find(x);
+                v.push(nk);
+            }
             v.dedup();
         }
     }
