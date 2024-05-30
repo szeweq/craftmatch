@@ -246,14 +246,13 @@ pub struct JClassReader<R: Read, At: Step> {
 }
 
 impl <R: Read, At: Step> JClassReader<R, At> {
+    #[inline]
+    #[allow(clippy::missing_const_for_fn)]
     fn step(self) -> anyhow::Result<JClassReader<R, At::Next>> {
-        Ok(JClassReader {
-            r: self.r,
-            pool: self.pool,
-            minor: self.minor,
-            major: self.major,
-            data: self.data,
-            _t: PhantomData
+        Ok(unsafe {
+            let p = &self as *const Self as *const JClassReader<R, At::Next>;
+            std::mem::forget(self);
+            std::ptr::read(p)
         })
     }
 }
