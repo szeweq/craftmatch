@@ -56,14 +56,6 @@ impl Extension {
     }
 }
 
-pub fn zip_open(p: impl AsRef<Path>) -> anyhow::Result<ZipArchive<BufReader<File>>> {
-    Ok(ZipArchive::new(BufReader::new(File::open(p)?))?)
-}
-
-pub fn zip_open_mem(p: impl AsRef<Path>) -> anyhow::Result<ZipArchive<Cursor<Vec<u8>>>> {
-    Ok(ZipArchive::new(Cursor::new(std::fs::read(p)?))?)
-}
-
 pub fn zip_file_iter<RS: Read + Seek>(z: &mut ZipArchive<RS>) -> ZipFileIter<RS, fn(&str) -> bool> {
     ZipFileIter(0, z, |_| true)
 }

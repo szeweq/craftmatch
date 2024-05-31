@@ -1,15 +1,15 @@
 #![allow(dead_code)]
 
-use std::{collections::HashMap, io::{BufRead, Read, Seek}, path::Path};
+use std::{collections::HashMap, io::{BufRead, Read, Seek}};
 use anyhow::anyhow;
 
-use crate::{ext, jvm};
+use crate::jvm;
 
 pub enum ModTypeMeta {
     Fabric(serde_json::Map<String, serde_json::Value>),
     Forge(toml::Table)
 }
-fn determine_mod_type(zip: &mut zip::ZipArchive<impl Read + Seek>) -> anyhow::Result<ModTypeMeta> {
+fn determine_mod_type<RS: Read + Seek>(zip: &mut zip::ZipArchive<RS>) -> anyhow::Result<ModTypeMeta> {
     Ok(if let Some(ix) = zip.index_for_name("fabric.mod.json") {
         let manifest: serde_json::Map<String, serde_json::Value> = serde_json::from_reader(zip.by_index(ix)?)?;
         ModTypeMeta::Fabric(manifest)
@@ -47,9 +47,8 @@ fn no_x_in_manifest(key: &'static str) -> anyhow::Error {
     anyhow!("No {key} in manifest")
 }
 
-pub fn extract_mod_info(jar_path: impl AsRef<Path>) -> anyhow::Result<ModTypeData> {
-    let mut zipfile = ext::zip_open(jar_path)?;
-    let md = match determine_mod_type(&mut zipfile)? {
+pub fn extract_mod_info<RS: Read + Seek>(zar: &mut zip::ZipArchive<RS>) -> anyhow::Result<ModTypeData> {
+    let md = match determine_mod_type(zar)? {
         ModTypeMeta::Fabric(manifest) => {
             fn get_str<'a>(m: &'a serde_json::Map<String, serde_json::Value>, key: &'static str) -> anyhow::Result<&'a str> {
                 m.get(key).and_then(|v| v.as_str()).ok_or_else(|| no_x_in_manifest(key))
@@ -119,9 +118,8 @@ fn version_from_mf(zip: &mut zip::ZipArchive<impl Read + Seek>) -> anyhow::Resul
     Ok(fl)
 }
 
-pub fn extract_versions(jar_path: impl AsRef<Path>) -> anyhow::Result<()> {
-    let mut zipfile = ext::zip_open(jar_path)?;
-    match determine_mod_type(&mut zipfile)? {
+pub fn extract_versions<RS: Read + Seek>(zar: &mut zip::ZipArchive<RS>) -> anyhow::Result<()> {
+    match determine_mod_type(zar)? {
         ModTypeMeta::Fabric(manifest) => {
             let depends = manifest.get("depends");
             let suggests = manifest.get("suggests");

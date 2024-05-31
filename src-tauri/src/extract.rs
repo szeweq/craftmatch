@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::{Read, Seek}, path::Path};
+use std::{collections::HashMap, io::{Read, Seek}};
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -40,9 +40,8 @@ impl ExtendSelf for ModContentSizes {
 }
 iter_extend!(ModContentSizes);
 
-pub fn compute_file_type_sizes(jar_path: &Path) -> Result<ModFileTypeSizes> {
-    let mut zipfile = ext::zip_open_mem(jar_path)?;
-    ext::zip_file_iter(&mut zipfile).try_fold(ModFileTypeSizes::default(), |mut mfts, file| {
+pub fn compute_file_type_sizes<RS: Read + Seek>(zar: &mut zip::ZipArchive<RS>) -> Result<ModFileTypeSizes> {
+    ext::zip_file_iter(zar).try_fold(ModFileTypeSizes::default(), |mut mfts, file| {
         let file = file?;
         let fname = file.name();
         let ext = match fname.rsplit_once('.') {
@@ -57,9 +56,8 @@ pub fn compute_file_type_sizes(jar_path: &Path) -> Result<ModFileTypeSizes> {
     })
 }
 
-pub fn compute_mod_content_sizes(jar_path: &Path) -> Result<ModContentSizes> {
-    let mut zipfile = ext::zip_open_mem(jar_path)?;
-    ext::zip_file_iter(&mut zipfile).try_fold(ModContentSizes::default(), |mut mcs, file| {
+pub fn compute_mod_content_sizes<RS: Read + Seek>(zar: &mut zip::ZipArchive<RS>) -> Result<ModContentSizes> {
+    ext::zip_file_iter(zar).try_fold(ModContentSizes::default(), |mut mcs, file| {
         let file = file?;
         let fname = file.name();
         let op = match fname.split_once('/').map(|x| x.0) {

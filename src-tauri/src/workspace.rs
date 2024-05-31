@@ -158,13 +158,13 @@ impl WSMode {
 pub type Gatherer<T> = fn(&FileInfo) -> anyhow::Result<T>;
 
 pub fn gather_mod_data(fi: &FileInfo) -> anyhow::Result<manifest::ModTypeData> {
-    manifest::extract_mod_info(&fi.path)
+    manifest::extract_mod_info(&mut fi.open_buf()?)
 }
 pub fn gather_file_type_sizes(fi: &FileInfo) -> anyhow::Result<extract::ModFileTypeSizes> {
-    extract::compute_file_type_sizes(&fi.path)
+    extract::compute_file_type_sizes(&mut fi.open_mem()?)
 }
 pub fn gather_content_sizes(fi: &FileInfo) -> anyhow::Result<extract::ModContentSizes> {
-    extract::compute_mod_content_sizes(&fi.path)
+    extract::compute_mod_content_sizes(&mut fi.open_mem()?)
 }
 pub fn gather_inheritance(fi: &FileInfo) -> anyhow::Result<ext::Inheritance> {
     jvm::gather_inheritance_v2(fi.open_mem()?)
@@ -180,10 +180,10 @@ pub fn gather_str_index(fi: &FileInfo) -> anyhow::Result<jvm::StrIndexMapped> {
 }
 pub fn gather_mod_entries(fi: &FileInfo) -> anyhow::Result<jvm::ModEntries> {
     let Some(moddata) = fi.get::<manifest::ModTypeData>() else { return Err(anyhow::anyhow!("No moddata")) };
-    manifest::extract_mod_entries(&mut ext::zip_open(&fi.path)?, moddata.as_ref())
+    manifest::extract_mod_entries(&mut fi.open_mem()?, moddata.as_ref())
 }
 pub fn gather_recipes(fi: &FileInfo) -> anyhow::Result<extract::RecipeTypeMap> {
-    extract::gather_recipes(&mut ext::zip_open_mem(&fi.path)?)
+    extract::gather_recipes(&mut fi.open_mem()?)
 }
 pub fn gather_playable(fi: &FileInfo) -> anyhow::Result<extract::PlayableFiles> {
     extract::gather_playable_files(&fi.open_buf()?)

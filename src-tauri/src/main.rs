@@ -12,7 +12,7 @@ mod slice;
 mod jclass;
 mod imp;
 
-use std::{borrow::Cow, collections::HashMap, sync::Arc, time::Instant};
+use std::{borrow::Cow, collections::HashMap, fs::File, io, sync::Arc, time::Instant};
 use tauri::{command, generate_context, generate_handler, http::Response, Manager, State};
 use uuid::Uuid;
 use workspace::{WSLock, WSMode};
@@ -255,10 +255,17 @@ fn main() {
 fn get_raw(ws: &WSLock, uri_path: &str) -> Option<anyhow::Result<Vec<u8>>> {
     let (s_id, path) = uri_path[1..].split_once('/')?;
     let id = Uuid::try_parse(s_id).ok()?;
-    let f = ws.locking(|ws| ws.entry_path(id)).ok()?;
-    let mut zip = match ext::zip_open(f) {
+    let bp = ws.locking(|ws| ws.entry_path(id)).ok()?;
+    let file = match File::open(bp) {
         Ok(x) => x,
-        Err(e) => { return Some(Err(e)) }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            return None;
+        }
+        Err(e) => { return Some(Err(e.into())) }
+    };
+    let mut zip = match zip::ZipArchive::new(io::BufReader::new(file)) {
+        Ok(x) => x,
+        Err(e) => { return Some(Err(e.into())) }
     };
     extract::get_raw_data(&mut zip, path).map(Ok)
 }
