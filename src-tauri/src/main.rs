@@ -1,6 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod rt;
 mod manifest;
 mod extract;
 mod workspace;
@@ -12,7 +13,7 @@ mod jclass;
 mod imp;
 
 use std::{borrow::Cow, collections::HashMap, sync::Arc, time::Instant};
-use tauri::{async_runtime, command, generate_context, generate_handler, http::Response, Manager, State};
+use tauri::{command, generate_context, generate_handler, http::Response, Manager, State};
 use uuid::Uuid;
 use workspace::{WSLock, WSMode};
 use slice::BinSearchExt;
@@ -41,7 +42,7 @@ async fn mod_dirs(app: tauri::AppHandle, state: State<'_, WSLock>, kind: imp::Re
         }
         imp::ReqModDirs::Select(dir) => {
             let astate = state.0.clone();
-            async_runtime::spawn(async move {
+            rt::spawn(async move {
                 let Some(mdir) = imp::get_mods_dir(&dir) else { return; };
                 if let Err(e) = astate.lock().unwrap().prepare(mdir) {
                     eprintln!("Opening workspace error: {e}");
@@ -58,7 +59,7 @@ async fn mod_dirs(app: tauri::AppHandle, state: State<'_, WSLock>, kind: imp::Re
 #[command]
 async fn open_workspace(app: tauri::AppHandle, state: State<'_, WSLock>) -> Result<(), ()> {
     let astate = state.0.clone();
-    async_runtime::spawn(async move {
+    rt::spawn(async move {
         let Some(dir) = rfd::AsyncFileDialog::new().pick_folder().await else { return };
         if let Err(e) = astate.lock().unwrap().prepare(dir.into()) {
             eprintln!("Opening workspace error: {e}");
@@ -73,7 +74,7 @@ async fn open_workspace(app: tauri::AppHandle, state: State<'_, WSLock>) -> Resu
 #[command]
 async fn close_workspace(app: tauri::AppHandle, state: State<'_, WSLock>) -> Result<(), ()> {
     let astate = state.0.clone();
-    async_runtime::spawn(async move {
+    rt::spawn(async move {
         astate.lock().unwrap().reset();
         if let Err(e) = app.emit("ws-open", false) {
             eprintln!("Closing workspace error: {e}");
@@ -233,7 +234,7 @@ fn main() {
         .register_asynchronous_uri_scheme_protocol("raw", |app, req, resp| {
             let now = std::time::Instant::now();
             let ws = app.state::<WSLock>().inner().clone();
-            async_runtime::spawn(async move {
+            rt::spawn(async move {
                 let rb = Response::builder();
                 resp.respond(match get_raw(&ws, req.uri().path()) {
                     Some(Ok(data)) => rb.header("Content-Length", data.len()).body(Cow::Owned(data)),
