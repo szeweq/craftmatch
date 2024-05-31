@@ -1,4 +1,4 @@
-use std::{path::{Path, PathBuf}, sync::{Arc, Mutex, RwLock}};
+use std::{fs::File, io::{self, BufReader}, path::{Path, PathBuf}, sync::{Arc, Mutex, RwLock}};
 
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 use serde::Deserialize;
@@ -108,6 +108,12 @@ impl FileInfo {
     pub fn size(&self) -> u64 {
         std::fs::metadata(&self.path).map_or(0, |md| md.len())
     }
+    pub fn open_buf(&self) -> io::Result<BufReader<File>> {
+        File::open(&self.path).map(BufReader::new)
+    }
+    pub fn open_mem(&self) -> io::Result<io::Cursor<Vec<u8>>> {
+        std::fs::read(&self.path).map(io::Cursor::new)
+    }
     pub fn get<T: Send + Sync + 'static>(&self) -> Option<Arc<T>> {
         self.datamap.try_get::<Arc<T>>().cloned()
     }
@@ -164,10 +170,10 @@ pub fn gather_complexity(fi: &FileInfo) -> anyhow::Result<jvm::Complexity> {
     jvm::gather_complexity(&fi.path)
 }
 pub fn gather_tags(fi: &FileInfo) -> anyhow::Result<extract::TagsList> {
-    extract::gather_tags(&mut ext::zip_open_mem(&fi.path)?)
+    extract::gather_tags(fi.open_mem()?)
 }
 pub fn gather_str_index(fi: &FileInfo) -> anyhow::Result<jvm::StrIndexMapped> {
-    jvm::gather_str_index_v2(&fi.path)
+    jvm::gather_str_index_v2(fi.open_buf()?)
 }
 pub fn gather_mod_entries(fi: &FileInfo) -> anyhow::Result<jvm::ModEntries> {
     let Some(moddata) = fi.get::<manifest::ModTypeData>() else { return Err(anyhow::anyhow!("No moddata")) };

@@ -3,6 +3,7 @@ use std::{collections::HashMap, io::{Read, Seek}, path::Path, sync::Mutex};
 use cafebabe::attributes::{AnnotationElement, AnnotationElementValue, AttributeData};
 use once_cell::sync::Lazy;
 use serde::Serialize;
+use zip::ZipArchive;
 
 use crate::{ext, jclass::{self, pool::PoolIter}};
 
@@ -22,7 +23,8 @@ fn parse_class_safe(b: &[u8], bytecode: bool) -> Result<cafebabe::ClassFile<'_>,
 #[inline]
 fn zip_each_class<F>(zip: &mut zip::ZipArchive<impl Read + Seek>, bytecode: bool, mut f: F) -> anyhow::Result<()>
 where for<'a> F: FnMut(&'a cafebabe::ClassFile<'a>) -> anyhow::Result<()> {
-    ext::zip_each_by_extension(zip, ext::Extension::Class, |mut zf| {
+    ext::zip_file_ext_iter(zip, ext::Extension::Class).try_for_each(|zf| {
+        let mut zf = zf?;
         let mut buf = Vec::new();
         zf.read_to_end(&mut buf)?;
         f(&parse_class_safe(&buf, bytecode)?)
@@ -32,7 +34,8 @@ where for<'a> F: FnMut(&'a cafebabe::ClassFile<'a>) -> anyhow::Result<()> {
 #[inline]
 fn zip_each_jclass<F>(zip: &mut zip::ZipArchive<impl Read + Seek>, mut f: F) -> anyhow::Result<()>
 where F: FnMut(jclass::JClassReader<&mut zip::read::ZipFile, jclass::AtInterfaces>) -> anyhow::Result<()> {
-    ext::zip_each_by_extension(zip, ext::Extension::Class, |mut zf| {
+    ext::zip_file_ext_iter(zip, ext::Extension::Class).try_for_each(|zf| {
+        let mut zf = zf?;
         let jcr = match jclass::JClassReader::new(&mut zf) {
             Ok(x) => x,
             Err(e) => {
@@ -157,8 +160,8 @@ impl From<StrIndex> for StrIndexMapped {
     }
 }
 
-pub fn gather_str_index_v2(p: &Path) -> anyhow::Result<StrIndexMapped> {
-    let mut zip = ext::zip_open(p)?;
+pub fn gather_str_index_v2<RS: Read + Seek>(rs: RS) -> anyhow::Result<StrIndexMapped> {
+    let mut zip = ZipArchive::new(rs)?;
     let mut sidx = StrIndex { classes: vec![], strings: HashMap::new() };
     zip_each_jclass(&mut zip, |jcr| {
         let name = jcr.class_name()?.to_string().into_boxed_str();

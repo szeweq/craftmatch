@@ -3,7 +3,7 @@ use std::{collections::HashMap, io::{Read, Seek}, path::Path};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
-use crate::{ext::{self, Extension}, slice::{ExtendSelf, iter_extend}};
+use crate::{ext::{self, Extension}, slice::{iter_extend, ExtendSelf}};
 
 #[derive(Serialize, Default)]
 pub struct ModFileTypeSizes(HashMap<Box<str>, [usize; 3]>);
@@ -42,10 +42,9 @@ iter_extend!(ModContentSizes);
 
 pub fn compute_file_type_sizes(jar_path: &Path) -> Result<ModFileTypeSizes> {
     let mut zipfile = ext::zip_open_mem(jar_path)?;
-    let mut mfts = ModFileTypeSizes::default();
-    ext::zip_each(&mut zipfile, |file| {
+    ext::zip_file_iter(&mut zipfile).try_fold(ModFileTypeSizes::default(), |mut mfts, file| {
+        let file = file?;
         let fname = file.name();
-        if file.is_dir() { return Ok(()) }
         let ext = match fname.rsplit_once('.') {
             None | Some(("", _)) | Some((_, "")) => "".into(),
             Some((_, x)) => x.to_lowercase().into_boxed_str()
@@ -54,15 +53,14 @@ pub fn compute_file_type_sizes(jar_path: &Path) -> Result<ModFileTypeSizes> {
         op[0] += 1;
         op[1] += file.size() as usize;
         op[2] += file.compressed_size() as usize;
-        Ok(())
-    })?;
-    Ok(mfts)
+        Ok(mfts)
+    })
 }
 
 pub fn compute_mod_content_sizes(jar_path: &Path) -> Result<ModContentSizes> {
     let mut zipfile = ext::zip_open_mem(jar_path)?;
-    let mut mcs = ModContentSizes::default();
-    ext::zip_each(&mut zipfile, |file| {
+    ext::zip_file_iter(&mut zipfile).try_fold(ModContentSizes::default(), |mut mcs, file| {
+        let file = file?;
         let fname = file.name();
         let op = match fname.split_once('/').map(|x| x.0) {
             Some("assets") => &mut mcs.assets,
@@ -80,9 +78,8 @@ pub fn compute_mod_content_sizes(jar_path: &Path) -> Result<ModContentSizes> {
         op[0] += 1;
         op[1] += file.size() as usize;
         op[2] += file.compressed_size() as usize;
-        Ok(())
-    })?;
-    Ok(mcs)
+        Ok(mcs)
+    })
 }
 
 type KMap<V> = HashMap<Box<str>, V>;
@@ -150,9 +147,10 @@ impl TagEntry {
     }
 }
 
-pub fn gather_tags(zipfile: &mut zip::ZipArchive<impl Read + Seek>) -> Result<TagsList> {
-    let mut tl = TagsList::new();
-    ext::zip_each_by_extension(zipfile, Extension::Json, |mut file| {
+pub fn gather_tags<RS: Read + Seek>(rs: RS) -> Result<TagsList> {
+    let mut zipfile = zip::ZipArchive::new(rs)?;
+    ext::zip_file_ext_iter(&mut zipfile, Extension::Json).try_fold(TagsList::new(), |mut tl, file| {
+        let mut file = file?;
         let filename = file.name().to_string();
         if let Some((ns, frest)) = filename.strip_prefix("data/").and_then(|fen| fen.split_once('/')) {
             if let Some((ptyp, prest)) = frest.strip_prefix("tags/").and_then(|fen| fen.split_once('/')) {
@@ -163,7 +161,7 @@ pub fn gather_tags(zipfile: &mut zip::ZipArchive<impl Read + Seek>) -> Result<Ta
                     Ok(t) => t,
                     Err(e) => {
                         eprintln!("In {filename}: {e}");
-                        return Ok(())
+                        return Ok(tl)
                     }
                 };
                 let nm = pe.entry(nx).or_default();
@@ -174,9 +172,8 @@ pub fn gather_tags(zipfile: &mut zip::ZipArchive<impl Read + Seek>) -> Result<Ta
                 }
             }
         }
-        Ok(())
-    })?;
-    Ok(tl)
+        Ok(tl)
+    })
 }
 
 pub fn get_raw_data(zip: &mut zip::ZipArchive<impl Read + Seek>, name: &str) -> Option<Vec<u8>> {
@@ -209,8 +206,8 @@ impl <R> FromIterator<R> for RecipeTypeMap where R: AsRef<Self> {
 }
 
 pub fn gather_recipes(zipfile: &mut zip::ZipArchive<impl Read + Seek>) -> Result<RecipeTypeMap> {
-    let mut recipes: HashMap<Box<str>, Vec<Box<str>>> = HashMap::new();
-    ext::zip_each_by_extension(zipfile, Extension::Json, |mut file| {
+    let recipes = ext::zip_file_ext_iter(zipfile, Extension::Json).try_fold(HashMap::<Box<str>, Vec<Box<str>>>::new(), |mut recipes, file| {
+        let mut file = file?;
         let filename = file.name().to_string();
         if let Some((ns, frest)) = filename.strip_prefix("data/").and_then(|fen| fen.split_once('/')) {
             if let Some(pname) = frest.strip_prefix("recipes/") {
@@ -220,13 +217,13 @@ pub fn gather_recipes(zipfile: &mut zip::ZipArchive<impl Read + Seek>) -> Result
                     Ok(t) => t,
                     Err(e) => {
                         eprintln!("In {filename}: {e}");
-                        return Ok(())
+                        return anyhow::Ok(recipes)
                     }
                 };
                 recipes.entry(recipe.typ).or_default().push(nx);
             }
         }
-        Ok(())
+        Ok(recipes)
     })?;
     Ok(RecipeTypeMap(recipes))
 }
