@@ -46,8 +46,8 @@ where F: FnMut(jclass::JClassReader<&mut zip::read::ZipFile, jclass::AtInterface
     })
 }
 
-pub fn gather_inheritance_v2(p: impl AsRef<Path>) -> anyhow::Result<ext::Inheritance> {
-    let mut zip = ext::zip_open(p)?;
+pub fn gather_inheritance_v2<RS: Read + Seek>(rs: RS) -> anyhow::Result<ext::Inheritance> {
+    let mut zip = ZipArchive::new(rs)?;
     let mut inh = ext::Inheritance::default();
     zip_each_jclass(&mut zip, |jcr| {
         let ajcn = jcr.class_name()?;

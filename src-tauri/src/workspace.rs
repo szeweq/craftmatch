@@ -164,7 +164,7 @@ pub fn gather_content_sizes(fi: &FileInfo) -> anyhow::Result<extract::ModContent
     extract::compute_mod_content_sizes(&fi.path)
 }
 pub fn gather_inheritance(fi: &FileInfo) -> anyhow::Result<ext::Inheritance> {
-    jvm::gather_inheritance_v2(&fi.path)
+    jvm::gather_inheritance_v2(fi.open_mem()?)
 }
 pub fn gather_complexity(fi: &FileInfo) -> anyhow::Result<jvm::Complexity> {
     jvm::gather_complexity(&fi.path)
@@ -173,7 +173,7 @@ pub fn gather_tags(fi: &FileInfo) -> anyhow::Result<extract::TagsList> {
     extract::gather_tags(fi.open_mem()?)
 }
 pub fn gather_str_index(fi: &FileInfo) -> anyhow::Result<jvm::StrIndexMapped> {
-    jvm::gather_str_index_v2(fi.open_buf()?)
+    jvm::gather_str_index_v2(fi.open_mem()?)
 }
 pub fn gather_mod_entries(fi: &FileInfo) -> anyhow::Result<jvm::ModEntries> {
     let Some(moddata) = fi.get::<manifest::ModTypeData>() else { return Err(anyhow::anyhow!("No moddata")) };
