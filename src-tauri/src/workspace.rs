@@ -1,11 +1,12 @@
 use std::{fs::File, io::{self, BufReader}, path::{Path, PathBuf}, sync::{Arc, Mutex, RwLock}};
 
-use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
+use indexmap::IndexMap;
+use rayon::iter::ParallelIterator;
 use serde::Deserialize;
 use state::TypeMap;
 use uuid::Uuid;
 
-use crate::{ext, extract, jvm, manifest, slice::BinSearchExt};
+use crate::{ext, extract, jvm, manifest};
 
 #[derive(Clone)]
 pub struct WSLock(pub Arc<Mutex<DirWS>>);
@@ -19,18 +20,20 @@ impl WSLock {
             f(&ws)
         })
     }
-    pub fn mods(&self) -> anyhow::Result<Arc<RwLock<Vec<FileInfo>>>> {
+    pub fn mods(&self) -> anyhow::Result<WSFiles> {
         self.locking(|ws| Ok(ws.mod_entries.clone()))
     }
 }
 
+type WSFiles = Arc<RwLock<IndexMap<Uuid, FileInfo>>>;
+
 pub struct DirWS {
     pub dir_path: Box<Path>,
-    mod_entries: Arc<RwLock<Vec<FileInfo>>>,
+    mod_entries: WSFiles,
 }
 impl DirWS {
     pub fn new() -> Self {
-        Self { dir_path: Box::from(Path::new("")), mod_entries: Arc::new(RwLock::new(Vec::new())) }
+        Self { dir_path: Box::from(Path::new("")), mod_entries: Arc::new(RwLock::new(IndexMap::new())) }
     }
     pub fn reset(&mut self) {
         *self = Self::new();
@@ -42,20 +45,21 @@ impl DirWS {
             let entry = entry.ok()?;
             if entry.path().is_dir() { return None; }
             if ext::Extension::Jar.matches(&entry.file_name()) {
-                FileInfo::new(entry.path()).inspect_err(|e| {
+                let id = id_from_time(&entry.path()).inspect_err(|e| {
                     eprintln!("{}: {}", entry.path().display(), e);
-                }).ok()
+                }).ok()?;
+                Some((id, FileInfo::new(entry.path())))
             } else {
                 None
             }
-        }).collect::<Vec<_>>();
-        jars.sort_unstable_by_key(|fe| fe.id);
+        }).collect::<IndexMap<_, _>>();
+        jars.sort_unstable_keys();
         *self.mod_entries.write().unwrap() = jars;
         Ok(())
     }
     pub fn entry_path(&self, id: Uuid) -> anyhow::Result<Box<Path>> {
         let fe = self.mod_entries.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
-        let fi = fe.iter().find(|fe| fe.id == id).ok_or_else(|| anyhow::anyhow!("file not found"))?;
+        let Some(fi) = fe.get(&id) else { anyhow::bail!("file not found") };
         let p = fi.path.clone();
         drop(fe);
         Ok(p)
@@ -66,9 +70,9 @@ pub trait AllGather {
     fn gather_with<T: Send + Sync + 'static>(&self, force: bool, gfn: Gatherer<T>) -> anyhow::Result<()>;
     fn gather_by_id<T: Send + Sync + 'static>(&self, id: Uuid, gfn: Gatherer<T>) -> anyhow::Result<Arc<T>>;
 }
-impl AllGather for Arc<RwLock<Vec<FileInfo>>> {
+impl AllGather for WSFiles {
     fn gather_with<T: Send + Sync + 'static>(&self, force: bool, gfn: Gatherer<T>) -> anyhow::Result<()> {
-        self.write().map_err(|_| anyhow::anyhow!("Error in gather_with"))?.par_iter_mut().for_each(|file_entry| {
+        self.write().map_err(|_| anyhow::anyhow!("Error in gather_with"))?.par_values_mut().for_each(|file_entry| {
             if let Err(e) = file_entry.gather(gfn, force) {
                 eprintln!("{}: {}", file_entry.path.display(), e);
             }
@@ -77,30 +81,29 @@ impl AllGather for Arc<RwLock<Vec<FileInfo>>> {
     }
     fn gather_by_id<T: Send + Sync + 'static>(&self, id: Uuid, gfn: Gatherer<T>) -> anyhow::Result<Arc<T>> {
         let fe = &mut *self.write().map_err(|_| anyhow::anyhow!("fe write error"))?;
-        fe.binsearch_key_map_mut(&id, |fe| fe.id, |fe| fe.get_or_gather(gfn))
+        let Some(fi) = fe.get_mut(&id) else { anyhow::bail!("file not found") };
+        fi.get_or_gather(gfn)
     }
 }
 
-fn id_from_time(time: std::time::SystemTime) -> anyhow::Result<Uuid> {
+fn id_from_time(path: &Path) -> anyhow::Result<Uuid> {
+    let time = std::fs::metadata(path)?.modified()?;
     let d = time.duration_since(std::time::UNIX_EPOCH)?;
     let (seconds, nanos) = (d.as_secs(), d.subsec_nanos());
     Ok(Uuid::new_v7(uuid::Timestamp::from_unix(uuid::timestamp::context::NoContext, seconds, nanos)))
 }
 
 pub struct FileInfo {
-    pub id: Uuid,
+    //pub id: Uuid,
     pub path: Box<Path>,
     datamap: TypeMap![Send + Sync]
 }
 impl FileInfo {
-    pub fn new(path: PathBuf) -> anyhow::Result<Self> {
-        let modtime = std::fs::metadata(&path)?.modified()?;
-        let id = id_from_time(modtime)?;
-        Ok(Self {
-            id,
+    pub fn new(path: PathBuf) -> Self {
+        Self {
             path: path.into_boxed_path(),
             datamap: <TypeMap![Send + Sync]>::new()
-        })
+        }
     }
     pub fn name(&self) -> String {
         self.path.file_name().unwrap().to_string_lossy().to_string()
@@ -143,12 +146,12 @@ pub enum WSMode {
     Specific(Uuid),
 }
 impl WSMode {
-    pub fn gather_from_entries<T: Send + Sync + FromIterator<Arc<T>> + 'static>(self, entries: Arc<RwLock<Vec<FileInfo>>>, gfn: Gatherer<T>) -> anyhow::Result<Arc<T>> {
+    pub fn gather_from_entries<T: Send + Sync + FromIterator<Arc<T>> + 'static>(self, entries: &WSFiles, gfn: Gatherer<T>) -> anyhow::Result<Arc<T>> {
         match self {
             Self::Generic(force) => {
                 entries.gather_with(force, gfn)?;
                 let fe = &*entries.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
-                Ok(Arc::new(fe.iter().filter_map(FileInfo::get::<T>).collect()))
+                Ok(Arc::new(fe.values().filter_map(FileInfo::get::<T>).collect()))
             }
             Self::Specific(id) => entries.gather_by_id(id, gfn)
         }

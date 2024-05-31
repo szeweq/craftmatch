@@ -16,7 +16,6 @@ use std::{borrow::Cow, collections::HashMap, fs::File, io, sync::Arc, time::Inst
 use tauri::{command, generate_context, generate_handler, http::Response, Manager, State};
 use uuid::Uuid;
 use workspace::{WSLock, WSMode};
-use slice::BinSearchExt;
 
 use crate::workspace::AllGather;
 
@@ -87,7 +86,7 @@ async fn close_workspace(app: tauri::AppHandle, state: State<'_, WSLock>) -> Res
 async fn ws_files(state: State<'_, WSLock>) -> Result<Vec<(uuid::Uuid, String, u64)>, ()> {
     let x = state.mods().and_then(|afe| {
         let mut x = afe.read().map_err(|_| anyhow::anyhow!("fe read error"))?.iter()
-            .map(|fe| (fe.id, fe.name(), fe.size()))
+            .map(|(id, fe)| (*id, fe.name(), fe.size()))
             .collect::<Vec<_>>();
         x.sort_by_cached_key(|x| x.1.to_lowercase());
         Ok(x)
@@ -99,9 +98,9 @@ async fn ws_files(state: State<'_, WSLock>) -> Result<Vec<(uuid::Uuid, String, u
 async fn ws_show(state: State<'_, WSLock>, id: uuid::Uuid) -> Result<(), ()> {
     state.mods().and_then(|afe| {
         let fe = &*afe.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
-        let path = match fe.binsearch_key_map(&id, |fe| fe.id, |fe| Ok(fe.path.clone())) {
-            Ok(path) => path,
-            Err(e) => return Err(e),
+        let path = match fe.get(&id) {
+            Some(fi) => fi.path.clone(),
+            None => anyhow::bail!("file path not found"),
         };
         Ok(opener::reveal(path)?)
     }).map_err(|e| eprintln!("Error in ws_show: {e}"))
@@ -111,7 +110,8 @@ async fn ws_show(state: State<'_, WSLock>, id: uuid::Uuid) -> Result<(), ()> {
 async fn ws_name(state: State<'_, WSLock>, id: uuid::Uuid) -> Result<String, ()> {
     state.mods().and_then(|afe| {
         let fe = &*afe.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
-        fe.binsearch_key_map(&id, |fe| fe.id, |fe| Ok(fe.name()))
+        let Some(fe) = fe.get(&id) else { anyhow::bail!("file not found") };
+        Ok(fe.name())
     }).map_err(|e| eprintln!("Error in ws_name: {e}"))
 }
 
@@ -130,14 +130,14 @@ fn ws_str_index(state: State<'_, WSLock>, id: uuid::Uuid) -> Option<Arc<jvm::Str
 #[command]
 fn ws_file_type_sizes(state: State<'_, WSLock>, mode: WSMode) -> Option<Arc<extract::ModFileTypeSizes>> {
     state.mods().and_then(|afe| {
-        mode.gather_from_entries(afe, workspace::gather_file_type_sizes)
+        mode.gather_from_entries(&afe, workspace::gather_file_type_sizes)
     }).inspect_err(|e| eprintln!("Error in ws_file_type_sizes: {e}")).ok()
 }
 
 #[command]
 fn ws_content_sizes(state: State<'_, WSLock>, mode: WSMode) -> Option<Arc<extract::ModContentSizes>> {
     state.mods().and_then(|afe| {
-        mode.gather_from_entries(afe, workspace::gather_content_sizes)
+        mode.gather_from_entries(&afe, workspace::gather_content_sizes)
     }).inspect_err(|e| eprintln!("Error in ws_content_sizes: {e}")).ok()
 }
 #[command]
@@ -148,7 +148,7 @@ async fn ws_inheritance(state: State<'_, WSLock>, mode: WSMode) -> Result<Arc<ex
             WSMode::Generic(force) => {
                 afe.gather_with(force, workspace::gather_inheritance)?;
                 let fe = &*afe.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
-                Ok(Arc::new(fe.iter().filter_map(workspace::FileInfo::get).collect()))
+                Ok(Arc::new(fe.values().filter_map(workspace::FileInfo::get).collect()))
             }
             WSMode::Specific(id) => afe.gather_by_id(id, workspace::gather_inheritance)
         }
@@ -164,7 +164,7 @@ async fn ws_complexity(state: State<'_, WSLock>, mode: WSMode) -> Result<Arc<jvm
             WSMode::Generic(force) => {
                 afe.gather_with(force, workspace::gather_complexity)?;
                 let fe = &*afe.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
-                Ok(Arc::new(fe.iter().filter_map(workspace::FileInfo::get).collect()))
+                Ok(Arc::new(fe.values().filter_map(workspace::FileInfo::get).collect()))
             }
             WSMode::Specific(id) => afe.gather_by_id(id, workspace::gather_complexity)
         }
@@ -180,7 +180,7 @@ async fn ws_tags(state: State<'_, WSLock>, mode: WSMode) -> Result<Arc<extract::
             WSMode::Generic(force) => {
                 afe.gather_with(force, workspace::gather_tags)?;
                 let fe = &*afe.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
-                Ok(Arc::new(fe.iter().filter_map(workspace::FileInfo::get).collect()))
+                Ok(Arc::new(fe.values().filter_map(workspace::FileInfo::get).collect()))
             }
             WSMode::Specific(id) => afe.gather_by_id(id, workspace::gather_tags)
         }
@@ -196,7 +196,7 @@ async fn ws_recipes(state: State<'_, WSLock>, mode: WSMode) -> Result<Arc<extrac
             WSMode::Generic(force) => {
                 afe.gather_with(force, workspace::gather_recipes)?;
                 let fe = &*afe.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
-                Ok(Arc::new(fe.iter().filter_map(workspace::FileInfo::get).collect()))
+                Ok(Arc::new(fe.values().filter_map(workspace::FileInfo::get).collect()))
             }
             WSMode::Specific(id) => afe.gather_by_id(id, workspace::gather_recipes)
         }

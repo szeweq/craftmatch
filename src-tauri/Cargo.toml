@@ -28,7 +28,8 @@ bytes = "1.6"
 once_cell = "1.19"
 dirs = "5.0"
 opener = {version = "0.7", features = ["reveal"] }
+indexmap = {version = "2.2", features = ["rayon"] }
 
 [lints.clippy]
 nursery = "warn"
-#pedantic = "warn"
+pedantic = "warn"
