@@ -147,9 +147,8 @@ impl TagEntry {
     }
 }
 
-pub fn gather_tags<RS: Read + Seek>(rs: RS) -> Result<TagsList> {
-    let mut zipfile = zip::ZipArchive::new(rs)?;
-    ext::zip_file_ext_iter(&mut zipfile, Extension::Json).try_fold(TagsList::new(), |mut tl, file| {
+pub fn gather_tags<RS: Read + Seek>(mut zar: zip::ZipArchive<RS>) -> Result<TagsList> {
+    ext::zip_file_ext_iter(&mut zar, Extension::Json).try_fold(TagsList::new(), |mut tl, file| {
         let mut file = file?;
         let filename = file.name().to_string();
         if let Some((ns, frest)) = filename.strip_prefix("data/").and_then(|fen| fen.split_once('/')) {

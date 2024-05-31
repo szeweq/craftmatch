@@ -108,11 +108,14 @@ impl FileInfo {
     pub fn size(&self) -> u64 {
         std::fs::metadata(&self.path).map_or(0, |md| md.len())
     }
-    pub fn open_buf(&self) -> io::Result<BufReader<File>> {
-        File::open(&self.path).map(BufReader::new)
+    fn open<RS: io::Read + io::Seek>(reader: io::Result<RS>) -> anyhow::Result<zip::ZipArchive<RS>> {
+        Ok(zip::ZipArchive::new(reader?)?)
     }
-    pub fn open_mem(&self) -> io::Result<io::Cursor<Vec<u8>>> {
-        std::fs::read(&self.path).map(io::Cursor::new)
+    pub fn open_buf(&self) -> anyhow::Result<zip::ZipArchive<BufReader<File>>> {
+        Self::open(File::open(&self.path).map(BufReader::new))
+    }
+    pub fn open_mem(&self) -> anyhow::Result<zip::ZipArchive<io::Cursor<Vec<u8>>>> {
+        Self::open(std::fs::read(&self.path).map(io::Cursor::new))
     }
     pub fn get<T: Send + Sync + 'static>(&self) -> Option<Arc<T>> {
         self.datamap.try_get::<Arc<T>>().cloned()
@@ -183,5 +186,5 @@ pub fn gather_recipes(fi: &FileInfo) -> anyhow::Result<extract::RecipeTypeMap> {
     extract::gather_recipes(&mut ext::zip_open_mem(&fi.path)?)
 }
 pub fn gather_playable(fi: &FileInfo) -> anyhow::Result<extract::PlayableFiles> {
-    extract::gather_playable_files(&ext::zip_open(&fi.path)?)
+    extract::gather_playable_files(&fi.open_buf()?)
 }
