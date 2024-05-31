@@ -189,5 +189,5 @@ pub fn gather_recipes(fi: &FileInfo) -> anyhow::Result<extract::RecipeTypeMap> {
     extract::gather_recipes(&mut fi.open_mem()?)
 }
 pub fn gather_playable(fi: &FileInfo) -> anyhow::Result<extract::PlayableFiles> {
-    extract::gather_playable_files(&fi.open_buf()?)
+    Ok(extract::gather_playable_files(&fi.open_buf()?))
 }

@@ -228,10 +228,10 @@ pub fn gather_recipes(zipfile: &mut zip::ZipArchive<impl Read + Seek>) -> Result
 #[derive(Serialize)]
 pub struct PlayableFiles(Box<[Box<str>]>);
 
-pub fn gather_playable_files(zipfile: &zip::ZipArchive<impl Read + Seek>) -> Result<PlayableFiles> {
+pub fn gather_playable_files(zipfile: &zip::ZipArchive<impl Read + Seek>) -> PlayableFiles {
     let mut files = zipfile.file_names()
         .filter(|&x| x.ends_with(".ogg")).map(|x| x.into())
         .collect::<Vec<_>>();
     files.sort();
-    Ok(PlayableFiles(files.into_boxed_slice()))
+    PlayableFiles(files.into_boxed_slice())
 }
