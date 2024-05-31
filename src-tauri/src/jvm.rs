@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::{Read, Seek}, path::Path, sync::Mutex};
+use std::{collections::HashMap, io::{Read, Seek}, sync::Mutex};
 
 use cafebabe::attributes::{AnnotationElement, AnnotationElementValue, AttributeData};
 use once_cell::sync::Lazy;
@@ -21,9 +21,10 @@ fn parse_class_safe(b: &[u8], bytecode: bool) -> Result<cafebabe::ClassFile<'_>,
 }
 
 #[inline]
-fn zip_each_class<F>(zip: &mut zip::ZipArchive<impl Read + Seek>, bytecode: bool, mut f: F) -> anyhow::Result<()>
+fn zip_each_class<RS: Read + Seek, F>(rs: RS, bytecode: bool, mut f: F) -> anyhow::Result<()>
 where for<'a> F: FnMut(&'a cafebabe::ClassFile<'a>) -> anyhow::Result<()> {
-    ext::zip_file_ext_iter(zip, ext::Extension::Class).try_for_each(|zf| {
+    let mut zip = ZipArchive::new(rs)?;
+    ext::zip_file_ext_iter(&mut zip, ext::Extension::Class).try_for_each(|zf| {
         let mut zf = zf?;
         let mut buf = Vec::new();
         zf.read_to_end(&mut buf)?;
@@ -32,9 +33,10 @@ where for<'a> F: FnMut(&'a cafebabe::ClassFile<'a>) -> anyhow::Result<()> {
 }
 
 #[inline]
-fn zip_each_jclass<F>(zip: &mut zip::ZipArchive<impl Read + Seek>, mut f: F) -> anyhow::Result<()>
+fn zip_each_jclass<RS: Read + Seek, F>(rs: RS, mut f: F) -> anyhow::Result<()>
 where F: FnMut(jclass::JClassReader<&mut zip::read::ZipFile, jclass::AtInterfaces>) -> anyhow::Result<()> {
-    ext::zip_file_ext_iter(zip, ext::Extension::Class).try_for_each(|zf| {
+    let mut zip = ZipArchive::new(rs)?;
+    ext::zip_file_ext_iter(&mut zip, ext::Extension::Class).try_for_each(|zf| {
         let mut zf = zf?;
         let jcr = match jclass::JClassReader::new(&mut zf) {
             Ok(x) => x,
@@ -47,9 +49,8 @@ where F: FnMut(jclass::JClassReader<&mut zip::read::ZipFile, jclass::AtInterface
 }
 
 pub fn gather_inheritance_v2<RS: Read + Seek>(rs: RS) -> anyhow::Result<ext::Inheritance> {
-    let mut zip = ZipArchive::new(rs)?;
     let mut inh = ext::Inheritance::default();
-    zip_each_jclass(&mut zip, |jcr| {
+    zip_each_jclass(rs, |jcr| {
         let ajcn = jcr.class_name()?;
         let cname = std::str::from_utf8(ajcn)?;
         let ci = inh.find(cname);
@@ -119,10 +120,9 @@ impl <R> FromIterator<R> for Complexity where R: AsRef<Self> {
     }
 }
 
-pub fn gather_complexity(p: impl AsRef<Path>) -> anyhow::Result<Complexity> {
-    let mut zip = ext::zip_open(p)?;
+pub fn gather_complexity<RS: Read + Seek>(rs: RS) -> anyhow::Result<Complexity> {
     let mut cmplx = Complexity(HashMap::new());
-    zip_each_class(&mut zip, true, |cf| {
+    zip_each_class(rs, true, |cf| {
         cmplx.fill_from(cf);
         Ok(())
     })?;
@@ -161,9 +161,8 @@ impl From<StrIndex> for StrIndexMapped {
 }
 
 pub fn gather_str_index_v2<RS: Read + Seek>(rs: RS) -> anyhow::Result<StrIndexMapped> {
-    let mut zip = ZipArchive::new(rs)?;
     let mut sidx = StrIndex { classes: vec![], strings: HashMap::new() };
-    zip_each_jclass(&mut zip, |jcr| {
+    zip_each_jclass(rs, |jcr| {
         let name = jcr.class_name()?.to_string().into_boxed_str();
         let sz = sidx.classes.len();
         sidx.classes.push(name);
@@ -180,9 +179,9 @@ pub struct ModEntries {
     pub classes: Box<[Box<str>]>
 }
 
-pub fn scan_forge_mod_entries(zipfile: &mut zip::ZipArchive<impl Read + Seek>, names: &[&str]) -> anyhow::Result<Box<[Box<str>]>> {
+pub fn scan_forge_mod_entries<RS: Read + Seek>(rs: RS, names: &[&str]) -> anyhow::Result<Box<[Box<str>]>> {
     let mut found = vec![None; names.len()];
-    zip_each_class(zipfile, false, |cf| {
+    zip_each_class(rs, false, |cf| {
         let Some(a) = find_annotation(cf, "Lnet/minecraftforge/fml/common/Mod;") else { return Ok(()) };
         for e in &a.elements {
             if let AnnotationElement{name: x, value: AnnotationElementValue::StringConstant(s)} = e {

@@ -167,7 +167,7 @@ pub fn gather_inheritance(fi: &FileInfo) -> anyhow::Result<ext::Inheritance> {
     jvm::gather_inheritance_v2(fi.open_mem()?)
 }
 pub fn gather_complexity(fi: &FileInfo) -> anyhow::Result<jvm::Complexity> {
-    jvm::gather_complexity(&fi.path)
+    jvm::gather_complexity(fi.open_mem()?)
 }
 pub fn gather_tags(fi: &FileInfo) -> anyhow::Result<extract::TagsList> {
     extract::gather_tags(fi.open_mem()?)
