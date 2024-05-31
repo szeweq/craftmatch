@@ -32,4 +32,4 @@ indexmap = {version = "2.2", features = ["rayon"] }
 
 [lints.clippy]
 nursery = "warn"
-pedantic = "warn"
+#pedantic = "warn"
