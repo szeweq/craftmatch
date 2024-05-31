@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, ffi::OsStr, fs::File, io::{BufReader, Cursor, Read, Seek}, path::Path};
+use std::{collections::VecDeque, ffi::OsStr, io::{Read, Seek}, path::Path};
 
 use serde::Serialize;
 use zip::{read::ZipFile, result::{ZipError, ZipResult}, ZipArchive};

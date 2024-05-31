@@ -45,7 +45,7 @@ pub fn compute_file_type_sizes<RS: Read + Seek>(zar: &mut zip::ZipArchive<RS>) -
         let file = file?;
         let fname = file.name();
         let ext = match fname.rsplit_once('.') {
-            None | Some(("", _)) | Some((_, "")) => "".into(),
+            None | Some(("", _) | (_, "")) => "".into(),
             Some((_, x)) => x.to_lowercase().into_boxed_str()
         };
         let op = mfts.0.entry(ext).or_default();
@@ -230,7 +230,7 @@ pub struct PlayableFiles(Box<[Box<str>]>);
 
 pub fn gather_playable_files(zipfile: &zip::ZipArchive<impl Read + Seek>) -> PlayableFiles {
     let mut files = zipfile.file_names()
-        .filter(|&x| x.ends_with(".ogg")).map(|x| x.into())
+        .filter(|&x| Extension::Ogg.matches(x)).map(Box::from)
         .collect::<Vec<_>>();
     files.sort();
     PlayableFiles(files.into_boxed_slice())
