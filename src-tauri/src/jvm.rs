@@ -58,14 +58,12 @@ pub fn gather_inheritance_v2<RS: Read + Seek>(mut zar: ZipArchive<RS>) -> anyhow
                 inh.add_inherit(ci, s);
             }
         }
-        jcr.interfaces(|av| {
-            for ajcn in av {
-                let ajcn = ajcn?;
-                let s = std::str::from_utf8(&ajcn)?;
-                inh.add_inherit(ci, s);
-            }
-            Ok(())
-        })?;
+        let (_, av) = jcr.interfaces()?;
+        for ajcn in av {
+            let ajcn = ajcn?;
+            let s = std::str::from_utf8(&ajcn)?;
+            inh.add_inherit(ci, s);
+        }
         Ok(())
     })?;
     Ok(inh)
