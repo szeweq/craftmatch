@@ -86,10 +86,10 @@ a:not([href="#"]):not([role="button"]):hover {
   color: #24c8db;
 }
 
-input,
 button,
 select,
-a[role="button"] {
+a[role="button"],
+label.input-group {
   outline: none;
   border: none;
   border-radius: 8px;
@@ -101,6 +101,15 @@ a[role="button"] {
   color: #ffffff;
   background-color: rgb(var(--cx1) / .625);
   transition: box-shadow 0.1s;
+}
+label.input-group > input {
+  outline: none;
+  border: none;
+  background: none;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  font-weight: 500;
+  font-family: inherit;
 }
 select {
   appearance: button;
@@ -158,7 +167,7 @@ button:not(:disabled):active, select:not(:disabled):active, a[role="button"]:act
   box-shadow: inset 0 0 0 2px var(--c-ring);
   background-color: rgb(var(--cx1) / .4);
 }
-input[type="text"]:active, input[type="text"]:focus {
+label.input-group:focus-within {
   box-shadow: inset 0 -2px 0 var(--c-ring);
 }
 

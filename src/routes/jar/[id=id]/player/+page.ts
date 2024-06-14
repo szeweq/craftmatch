@@ -1,5 +1,5 @@
 import { wsModPlayable } from "$lib/ws";
 
 export async function load({ params }) {
-  return {files: await wsModPlayable(params.id as UUID)}
+  return {files: await wsModPlayable(params.id as FileID)}
 }

@@ -27,7 +27,7 @@ export type StrIndex = {
 export type ContentTypes = 'meta' | 'classes' | 'assets' | 'data' | 'other'
 
 function invokeWithMode<T>(cmd: string) {
-  return (forceOrId: boolean | UUID) => invoke<T | null>(cmd, {
+  return (forceOrId: boolean | FileID) => invoke<T | null>(cmd, {
     mode: forceOrId
   })
 }
@@ -36,22 +36,22 @@ export async function openWorkspace() {
   return await invoke<boolean>('open_workspace')
 }
 
-export async function wsShow(id: UUID) {
+export async function wsShow(id: FileID) {
   return await invoke<boolean>('ws_show', {id})
 }
-export async function wsName(id: UUID) {
+export async function wsName(id: FileID) {
   return await invoke<string>('ws_name', {id})
 }
-export async function wsModData(id: UUID) {
+export async function wsModData(id: FileID) {
   return await invoke<(ModData | null)>('ws_mod_data', {id})
 }
-export async function wsModPlayable(id: UUID) {
+export async function wsModPlayable(id: FileID) {
   return await invoke<(string[] | null)>('ws_mod_playable', {id})
 }
-export async function wsStrIndex(id: UUID) {
+export async function wsStrIndex(id: FileID) {
   return await invoke<(StrIndex | null)>('ws_str_index', {id})
 }
-export async function wsModEntries(id: UUID) {
+export async function wsModEntries(id: FileID) {
   return await invoke<{}>('ws_mod_entries', {id})
 }
 export const wsFileTypeSizes = invokeWithMode<Record<string, [number, number, number]>>('ws_file_type_sizes')
@@ -70,4 +70,4 @@ function invokeAndListen<T>(cmd: string, event: string) {
   }
 }
 
-export const wsFiles = invokeAndListen<[UUID, string, number][]>('ws_files', 'ws-files')
+export const wsFiles = invokeAndListen<[FileID, string, number][]>('ws_files', 'ws-files')

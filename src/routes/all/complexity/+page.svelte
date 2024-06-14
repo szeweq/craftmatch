@@ -12,7 +12,10 @@
   let sorted = $derived(sortBy(queried, sortCount, x => x[1].total))
 </script>
 <section class="sticky top-0 rounded-md b-solid b-white/40 b-2 bgvar-c-bg1 p-1">
-  <input type="text" bind:value={q} />
+  <label class="input-group">
+    <input type="text" bind:value={q} />
+    <span>{queried.length}/{complx.length}</span>
+  </label>
   <input id="sortCount" type="checkbox" bind:checked={sortCount} />
   <label for="sortCount">Sort by count</label>
   <Paginator bind:page={page} count={pages} />

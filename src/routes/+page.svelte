@@ -7,12 +7,13 @@
   import type { ToggleEventHandler } from "svelte/elements"
 
   let fileQuery = $state("")
+  let qlen = $state(0)
   let kbfmt = useUnitFmt('kilobyte')
   let sortSize = $state(false)
-  let lastSelected = $state<UUID | null>(null)
+  let lastSelected = $state<FileID | null>(null)
   let menupos = $state<[number, number]>([0, 0])
   let activePopover = $state<HTMLElement | null>(null)
-  const showMenu = (e: HTMLElement, id: UUID) => {
+  const showMenu = (e: HTMLElement, id: FileID) => {
     if (lastSelected == id) return
     lastSelected = id
     const rect = e.getBoundingClientRect()
@@ -45,14 +46,16 @@
   </div>
   <h2>Files</h2>
   <section class="sticky top-0 rounded-md b-solid b-white/40 b-2 bgvar-c-bg1 p-1 z-1">
-    <input type="text" bind:value={fileQuery} placeholder="Search files...">
-    <span>Mods found: {ws.files.length}</span>
+    <label class="input-group">
+      <input type="text" bind:value={fileQuery} placeholder="Search files...">
+      <span>{qlen}/{ws.files.length}</span>
+    </label>
     <label>
       <input type="checkbox" bind:checked={sortSize} />
       <span>Sort by size</span>
     </label>
   </section>
-  <FilesList class="text-sm b-2 b-solid b-white/40 rounded-md list-none mx-0 my-2 text-truncate" q={fileQuery} sortSize={sortSize}>
+  <FilesList class="text-sm b-2 b-solid b-white/40 rounded-md list-none mx-0 my-2 text-truncate" q={fileQuery} sortSize={sortSize} bind:qlen>
     {#snippet item(id, f, n)}
       <li class="f hover:bg-white/20 justify-between gap-1 px-1 items-center">
         <a class="flex-1 block c-inherit hover:c-inherit! p-1" href={`/jar/${id}`}>
