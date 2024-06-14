@@ -11,10 +11,11 @@ mod mc;
 mod slice;
 mod jclass;
 mod imp;
+mod id;
 
 use std::{borrow::Cow, collections::HashMap, fs::File, io, sync::Arc, time::Instant};
+use id::Id;
 use tauri::{command, generate_context, generate_handler, http::Response, Manager, State};
-use uuid::Uuid;
 use workspace::{WSLock, WSMode};
 
 use crate::workspace::AllGather;
@@ -83,7 +84,7 @@ async fn close_workspace(app: tauri::AppHandle, state: State<'_, WSLock>) -> Res
 }
 
 #[command]
-async fn ws_files(state: State<'_, WSLock>) -> Result<Vec<(uuid::Uuid, String, u64)>, ()> {
+async fn ws_files(state: State<'_, WSLock>) -> Result<Vec<(Id, String, u64)>, ()> {
     let x = state.mods().and_then(|afe| {
         let mut x = afe.read().map_err(|_| anyhow::anyhow!("fe read error"))?.iter()
             .map(|(id, fe)| (*id, fe.name(), fe.size()))
@@ -95,7 +96,7 @@ async fn ws_files(state: State<'_, WSLock>) -> Result<Vec<(uuid::Uuid, String, u
 }
 
 #[command]
-async fn ws_show(state: State<'_, WSLock>, id: uuid::Uuid) -> Result<(), ()> {
+async fn ws_show(state: State<'_, WSLock>, id: Id) -> Result<(), ()> {
     state.mods().and_then(|afe| {
         let fe = &*afe.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
         let path = match fe.get(&id) {
@@ -107,7 +108,7 @@ async fn ws_show(state: State<'_, WSLock>, id: uuid::Uuid) -> Result<(), ()> {
 }
 
 #[command]
-async fn ws_name(state: State<'_, WSLock>, id: uuid::Uuid) -> Result<String, ()> {
+async fn ws_name(state: State<'_, WSLock>, id: Id) -> Result<String, ()> {
     state.mods().and_then(|afe| {
         let fe = &*afe.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
         let Some(fe) = fe.get(&id) else { anyhow::bail!("file not found") };
@@ -116,13 +117,13 @@ async fn ws_name(state: State<'_, WSLock>, id: uuid::Uuid) -> Result<String, ()>
 }
 
 #[command]
-fn ws_mod_data(state: State<'_, WSLock>, id: uuid::Uuid) -> Option<Arc<manifest::ModTypeData>> {
+fn ws_mod_data(state: State<'_, WSLock>, id: Id) -> Option<Arc<manifest::ModTypeData>> {
     state.mods().and_then(|afe| {
         afe.gather_by_id(id, workspace::gather_mod_data)
     }).inspect_err(|e| eprintln!("Error in ws_mod_data: {e}")).ok()
 }
 #[command]
-fn ws_str_index(state: State<'_, WSLock>, id: uuid::Uuid) -> Option<Arc<jvm::StrIndexMapped>> {
+fn ws_str_index(state: State<'_, WSLock>, id: Id) -> Option<Arc<jvm::StrIndexMapped>> {
     state.mods().and_then(|afe| {
         afe.gather_by_id(id, workspace::gather_str_index)
     }).inspect_err(|e| eprintln!("Error in ws_str_index: {e}")).ok()
@@ -206,14 +207,14 @@ async fn ws_recipes(state: State<'_, WSLock>, mode: WSMode) -> Result<Arc<extrac
 }
 
 #[command]
-async fn ws_mod_entries(state: State<'_, WSLock>, id: Uuid) -> Result<Arc<jvm::ModEntries>, ()> {
+async fn ws_mod_entries(state: State<'_, WSLock>, id: Id) -> Result<Arc<jvm::ModEntries>, ()> {
     state.mods()
         .and_then(|afe| afe.gather_by_id(id, workspace::gather_mod_entries))
         .map_err(|e| eprintln!("Error in ws_mod_entry: {e}"))
 }
 
 #[command]
-fn ws_mod_playable(state: State<'_, WSLock>, id: Uuid) -> Result<Arc<extract::PlayableFiles>, ()> {
+fn ws_mod_playable(state: State<'_, WSLock>, id: Id) -> Result<Arc<extract::PlayableFiles>, ()> {
     state.mods()
         .and_then(|afe| afe.gather_by_id(id, workspace::gather_playable))
         .map_err(|e| eprintln!("Error in ws_mod_playable: {e}"))
@@ -254,7 +255,7 @@ fn main() {
 #[inline]
 fn get_raw(ws: &WSLock, uri_path: &str) -> Option<anyhow::Result<Vec<u8>>> {
     let (s_id, path) = uri_path[1..].split_once('/')?;
-    let id = Uuid::try_parse(s_id).ok()?;
+    let id = s_id.parse().ok()?;
     let bp = ws.locking(|ws| ws.entry_path(id)).ok()?;
     let file = match File::open(bp) {
         Ok(x) => x,

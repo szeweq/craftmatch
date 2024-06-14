@@ -4,9 +4,8 @@ use indexmap::IndexMap;
 use rayon::iter::ParallelIterator;
 use serde::Deserialize;
 use state::TypeMap;
-use uuid::Uuid;
 
-use crate::{ext, extract, jvm, manifest};
+use crate::{ext, extract, id::Id, jvm, manifest};
 
 #[derive(Clone)]
 pub struct WSLock(pub Arc<Mutex<DirWS>>);
@@ -25,7 +24,7 @@ impl WSLock {
     }
 }
 
-type WSFiles = Arc<RwLock<IndexMap<Uuid, FileInfo>>>;
+type WSFiles = Arc<RwLock<IndexMap<Id, FileInfo>>>;
 
 pub struct DirWS {
     pub dir_path: Box<Path>,
@@ -57,7 +56,7 @@ impl DirWS {
         *self.mod_entries.write().unwrap() = jars;
         Ok(())
     }
-    pub fn entry_path(&self, id: Uuid) -> anyhow::Result<Box<Path>> {
+    pub fn entry_path(&self, id: Id) -> anyhow::Result<Box<Path>> {
         let fe = self.mod_entries.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
         let Some(fi) = fe.get(&id) else { anyhow::bail!("file not found") };
         let p = fi.path.clone();
@@ -68,7 +67,7 @@ impl DirWS {
 
 pub trait AllGather {
     fn gather_with<T: Send + Sync + 'static>(&self, force: bool, gfn: Gatherer<T>) -> anyhow::Result<()>;
-    fn gather_by_id<T: Send + Sync + 'static>(&self, id: Uuid, gfn: Gatherer<T>) -> anyhow::Result<Arc<T>>;
+    fn gather_by_id<T: Send + Sync + 'static>(&self, id: Id, gfn: Gatherer<T>) -> anyhow::Result<Arc<T>>;
 }
 impl AllGather for WSFiles {
     fn gather_with<T: Send + Sync + 'static>(&self, force: bool, gfn: Gatherer<T>) -> anyhow::Result<()> {
@@ -79,18 +78,17 @@ impl AllGather for WSFiles {
         });
         Ok(())
     }
-    fn gather_by_id<T: Send + Sync + 'static>(&self, id: Uuid, gfn: Gatherer<T>) -> anyhow::Result<Arc<T>> {
+    fn gather_by_id<T: Send + Sync + 'static>(&self, id: Id, gfn: Gatherer<T>) -> anyhow::Result<Arc<T>> {
         let fe = &mut *self.write().map_err(|_| anyhow::anyhow!("fe write error"))?;
         let Some(fi) = fe.get_mut(&id) else { anyhow::bail!("file not found") };
         fi.get_or_gather(gfn)
     }
 }
 
-fn id_from_time(path: &Path) -> anyhow::Result<Uuid> {
+fn id_from_time(path: &Path) -> anyhow::Result<Id> {
     let time = std::fs::metadata(path)?.modified()?;
     let d = time.duration_since(std::time::UNIX_EPOCH)?;
-    let (seconds, nanos) = (d.as_secs(), d.subsec_nanos());
-    Ok(Uuid::new_v7(uuid::Timestamp::from_unix(uuid::timestamp::context::NoContext, seconds, nanos)))
+    Ok(Id::new(d))
 }
 
 pub struct FileInfo {
@@ -143,7 +141,7 @@ impl FileInfo {
 #[serde(untagged)]
 pub enum WSMode {
     Generic(bool),
-    Specific(Uuid),
+    Specific(Id),
 }
 impl WSMode {
     pub fn gather_from_entries<T: Send + Sync + FromIterator<Arc<T>> + 'static>(self, entries: &WSFiles, gfn: Gatherer<T>) -> anyhow::Result<Arc<T>> {

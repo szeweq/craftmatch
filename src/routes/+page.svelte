@@ -1,13 +1,12 @@
 <script lang="ts">
   import FilesList from "$lib/FilesList.svelte"
   import Welcome from "$lib/Welcome.svelte"
-  import { dateFmt, useUnitFmt } from "$lib/intl.svelte"
+  import { useUnitFmt } from "$lib/intl.svelte"
   import { ws } from "$lib/workspace.svelte"
   import { wsShow } from "$lib/ws"
   import type { ToggleEventHandler } from "svelte/elements"
-  
+
   let fileQuery = $state("")
-  const uuidv7time = (id: UUID) => new Date(parseInt(id.slice(0, 8) + id.slice(9, 13), 16))
   let kbfmt = useUnitFmt('kilobyte')
   let sortSize = $state(false)
   let lastSelected = $state<UUID | null>(null)
@@ -58,7 +57,7 @@
       <li class="f hover:bg-white/20 justify-between gap-1 px-1 items-center">
         <a class="flex-1 block c-inherit hover:c-inherit! p-1" href={`/jar/${id}`}>
           <div>{f}</div>
-          <div class="text-xs">{kbfmt(n / 1024)} | {dateFmt(uuidv7time(id))}</div>
+          <div class="text-xs">{kbfmt(n / 1024)}</div>
         </a>
         <button class="btn-icon" onclick={() => wsShow(id)}><span class="i-ms-open-in-new"></span></button>
         <button class="btn-icon" popovertarget="file-opts" onclick={e => showMenu(e.currentTarget, id)}><span class="i-ms-more-vert"></span></button>
