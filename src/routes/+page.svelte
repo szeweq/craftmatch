@@ -35,7 +35,7 @@
   <h1>Workspace opened</h1>
   <div>
     Check full reports on all mods in this directory:
-    <nav class="py-1">
+    <nav class="actions py-1">
       <a role="button" href="/all/tags">Tags</a>
       <a role="button" href="/all/inheritance">Inheritance</a>
       <a role="button" href="/all/complexity">Complexity</a>
