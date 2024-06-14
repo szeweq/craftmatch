@@ -9,7 +9,7 @@
   let pages = $derived(Math.ceil(queried.length / perPage))
   let page = $state(0)
   let sortCount = $state(false)
-  let sorted = $derived(sortBy(queried, sortCount, x => x[1].total))
+  let sorted = $derived(sortBy(queried, sortCount && (x => x[1].total)))
 </script>
 <section class="sticky top-0 rounded-md b-solid b-white/40 b-2 bgvar-c-bg1 p-1">
   <label class="input-group">

@@ -10,7 +10,7 @@ let {class: c = "", q = "", qlen = $bindable(0), sortSize = false, item}: {
   item: Snippet<[FileID, string, number]>
 } = $props()
 let queried = $derived(filterBy(ws.files, q, x => x[1]))
-let sorted = $derived(sortBy(queried, sortSize, x => x[2]))
+let sorted = $derived(sortBy(queried, sortSize && (x => x[2])))
 $effect.pre(ws.loadFiles)
 $effect(() => {qlen = queried.length})
 </script>

@@ -8,7 +8,7 @@
   let queried = $derived(filterBy(data?.strings || [], q, ([s]) => s))
   let pages = $derived(Math.ceil(queried.length / perPage))
   let sortCount = $state(false)
-  let sorted = $derived(sortBy(queried, sortCount, ([,j]) => j.length))
+  let sorted = $derived(sortBy(queried, sortCount && (([,j]) => j.length)))
 </script>
 <section class="sticky top-0 rounded-md b-solid b-white/40 b-2 bgvar-c-bg1 p-1">
   <label class="input-group">

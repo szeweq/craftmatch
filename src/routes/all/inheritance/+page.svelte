@@ -8,7 +8,7 @@
   let queried = $derived(filterBy(data.indices, q, ([s]) => s))
   let pages = $derived(Math.ceil(queried.length / perPage))
   let sortCount = $state(false)
-  let sorted = $derived(sortBy(queried, sortCount, ([,j]) => data.inherits[j].length))
+  let sorted = $derived(sortBy(queried, sortCount && (([,j]) => data.inherits[j].length)))
   let selected = $state(-1)
   let selectedString = $derived.by(() => selected >= 0 ? data.indices.find(([,i]) => i == selected)![0] : "")
   let selectedList = $derived.by(() => selected >= 0 ? data.inherits[selected].map(k => data.indices.find(([,j]) => j == k)![0]) : [])

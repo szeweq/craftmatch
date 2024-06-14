@@ -10,7 +10,7 @@
   let queried = $derived(filterBy(oe, q, ([s]) => s))
   let pages = $derived(Math.ceil(queried.length / perPage))
   let sortCount = $state(false)
-  let sorted = $derived(sortBy(queried, sortCount, ([,j]) => j))
+  let sorted = $derived(sortBy(queried, sortCount && (x => x[1])))
   let timeFmt = useUnitFmt('microsecond')
 </script>
 <h1>Debug – parsing times</h1>
