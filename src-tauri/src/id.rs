@@ -42,6 +42,6 @@ impl Serialize for Id {
 impl<'de> Deserialize<'de> for Id {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let s = String::deserialize(deserializer)?;
-        Ok(Self(s.parse().map_err(serde::de::Error::custom)?))
+        s.parse().map_err(serde::de::Error::custom)
     }
 }
