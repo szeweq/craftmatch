@@ -1,6 +1,6 @@
-use std::{fmt::Display, str::FromStr, time::Duration};
+use std::{fmt, str::FromStr, time::Duration};
 
-use base64::Engine;
+use base64::{Engine, prelude::BASE64_URL_SAFE_NO_PAD};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -14,14 +14,15 @@ impl Id {
     }
     pub fn b64(&self) -> Result<Box<[u8; 22]>, base64::EncodeSliceError> {
         let mut buf = [0u8; 22];
-        base64::engine::general_purpose::URL_SAFE_NO_PAD.encode_slice(self.0.as_bytes(), &mut buf)?;
+        
+        BASE64_URL_SAFE_NO_PAD.encode_slice(self.0.as_bytes(), &mut buf)?;
         Ok(buf.into())
     }
 }
 
-impl Display for Id {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let buf = self.b64().map_err(|_| std::fmt::Error)?;
+impl fmt::Display for Id {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let buf = self.b64().map_err(|_| fmt::Error)?;
         let s = unsafe { std::str::from_utf8_unchecked(&*buf) };
         f.write_str(s)
     }
@@ -30,7 +31,7 @@ impl FromStr for Id {
     type Err = base64::DecodeSliceError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut buf = [0u8; 16];
-        base64::engine::general_purpose::URL_SAFE_NO_PAD.decode_slice(s, &mut buf)?;
+        BASE64_URL_SAFE_NO_PAD.decode_slice(s, &mut buf)?;
         Ok(Self(Uuid::from_bytes(buf)))
     }
 }

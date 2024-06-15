@@ -1,4 +1,4 @@
-use std::{fs::File, io::{self, BufReader}, path::{Path, PathBuf}, sync::{Arc, Mutex, RwLock}};
+use std::{fs::{self, File}, io::{self, BufReader}, path::{Path, PathBuf}, sync::{Arc, Mutex, RwLock}};
 
 use indexmap::IndexMap;
 use rayon::iter::ParallelIterator;
@@ -20,14 +20,14 @@ impl WSLock {
         })
     }
     pub fn mods(&self) -> anyhow::Result<WSFiles> {
-        self.locking(|ws| Ok(ws.mod_entries.clone()))
+        self.locking(|ws| Ok(Arc::clone(&ws.mod_entries)))
     }
 }
 
 type WSFiles = Arc<RwLock<IndexMap<Id, FileInfo>>>;
 
 pub struct DirWS {
-    pub dir_path: Box<Path>,
+    dir_path: Box<Path>,
     mod_entries: WSFiles,
 }
 impl DirWS {
@@ -37,9 +37,12 @@ impl DirWS {
     pub fn reset(&mut self) {
         *self = Self::new();
     }
+    pub fn is_empty(&self) -> bool {
+        &*self.dir_path != Path::new("")
+    }
     pub fn prepare(&mut self, dir_path: PathBuf) -> anyhow::Result<()> {
         self.dir_path = dir_path.into_boxed_path();
-        let rdir = std::fs::read_dir(&self.dir_path)?;
+        let rdir = fs::read_dir(&self.dir_path)?;
         let mut jars = rdir.filter_map(|entry| {
             let entry = entry.ok()?;
             if entry.path().is_dir() { return None; }
@@ -86,7 +89,7 @@ impl AllGather for WSFiles {
 }
 
 fn id_from_time(path: &Path) -> anyhow::Result<Id> {
-    let time = std::fs::metadata(path)?.modified()?;
+    let time = fs::metadata(path)?.modified()?;
     let d = time.duration_since(std::time::UNIX_EPOCH)?;
     Ok(Id::new(d))
 }
@@ -104,19 +107,19 @@ impl FileInfo {
         }
     }
     pub fn name(&self) -> String {
-        self.path.file_name().unwrap().to_string_lossy().to_string()
+        self.path.file_name().map_or(self.path.as_os_str(), |name| name).to_string_lossy().to_string()
     }
     pub fn size(&self) -> u64 {
-        std::fs::metadata(&self.path).map_or(0, |md| md.len())
+        fs::metadata(&self.path).map_or(0, |md| md.len())
     }
     fn open<RS: io::Read + io::Seek>(reader: io::Result<RS>) -> anyhow::Result<zip::ZipArchive<RS>> {
-        Ok(zip::ZipArchive::new(reader?)?)
+        zip::ZipArchive::new(reader?).map_err(anyhow::Error::from)
     }
     pub fn open_buf(&self) -> anyhow::Result<zip::ZipArchive<BufReader<File>>> {
         Self::open(File::open(&self.path).map(BufReader::new))
     }
     pub fn open_mem(&self) -> anyhow::Result<zip::ZipArchive<io::Cursor<Vec<u8>>>> {
-        Self::open(std::fs::read(&self.path).map(io::Cursor::new))
+        Self::open(fs::read(&self.path).map(io::Cursor::new))
     }
     pub fn get<T: Send + Sync + 'static>(&self) -> Option<Arc<T>> {
         self.datamap.try_get::<Arc<T>>().cloned()

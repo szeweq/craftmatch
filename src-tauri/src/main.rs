@@ -23,7 +23,7 @@ use crate::workspace::AllGather;
 #[command]
 async fn load(app: tauri::AppHandle, state: State<'_, WSLock>) -> Result<(), ()> {
     state.clone().locking(|ws| {
-        if &*ws.dir_path != std::path::Path::new("") {
+        if ws.is_empty() {
             if let Err(e) = app.emit("ws-open", true) {
                 eprintln!("Opening workspace error: {e}");
             }
@@ -41,7 +41,7 @@ async fn mod_dirs(app: tauri::AppHandle, state: State<'_, WSLock>, kind: imp::Re
             Ok(imp::RespModDirs::Listed(v))
         }
         imp::ReqModDirs::Select(dir) => {
-            let astate = state.0.clone();
+            let astate = Arc::clone(&state.0);
             rt::spawn(async move {
                 let Some(mdir) = imp::get_mods_dir(&dir) else { return; };
                 if let Err(e) = astate.lock().unwrap().prepare(mdir) {
@@ -58,7 +58,7 @@ async fn mod_dirs(app: tauri::AppHandle, state: State<'_, WSLock>, kind: imp::Re
 
 #[command]
 async fn open_workspace(app: tauri::AppHandle, state: State<'_, WSLock>) -> Result<(), ()> {
-    let astate = state.0.clone();
+    let astate = Arc::clone(&state.0);
     rt::spawn(async move {
         let Some(dir) = rfd::AsyncFileDialog::new().pick_folder().await else { return };
         if let Err(e) = astate.lock().unwrap().prepare(dir.into()) {
@@ -73,7 +73,7 @@ async fn open_workspace(app: tauri::AppHandle, state: State<'_, WSLock>) -> Resu
 
 #[command]
 async fn close_workspace(app: tauri::AppHandle, state: State<'_, WSLock>) -> Result<(), ()> {
-    let astate = state.0.clone();
+    let astate = Arc::clone(&state.0);
     rt::spawn(async move {
         astate.lock().unwrap().reset();
         if let Err(e) = app.emit("ws-open", false) {

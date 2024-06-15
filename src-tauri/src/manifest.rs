@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::{collections::HashMap, io::{BufRead, Read, Seek}};
+use std::{collections::HashMap, io::{BufRead, BufReader, Read, Seek}};
 use anyhow::anyhow;
 
 use crate::jvm;
@@ -109,9 +109,9 @@ pub struct VersionInfo {
 }
 pub struct VersionMap(HashMap<Box<str>, VersionInfo>);
 
-fn version_from_mf(zip: &mut zip::ZipArchive<impl Read + Seek>) -> anyhow::Result<Box<str>> {
+fn version_from_mf<RS: Read + Seek>(zip: &mut zip::ZipArchive<RS>) -> anyhow::Result<Box<str>> {
     let manifest = zip.by_name("META-INF/MANIFEST.MF")?;
-    let bufr = std::io::BufReader::new(manifest);
+    let bufr = BufReader::new(manifest);
     let Some(fl) = bufr.lines().find_map(|l| l.ok().and_then(|l| l.strip_prefix("Implementation-Version: ").map(|x| x.to_string().into_boxed_str()))) else {
         return Err(anyhow!("No version in manifest"));
     };
@@ -145,7 +145,7 @@ pub fn extract_versions<RS: Read + Seek>(zar: &mut zip::ZipArchive<RS>) -> anyho
     Ok(())
 }
 
-pub fn extract_mod_entries(zipfile: &mut zip::ZipArchive<impl Read + Seek>, mtd: &ModTypeData) -> anyhow::Result<jvm::ModEntries> {
+pub fn extract_mod_entries<RS: Read + Seek>(zipfile: &mut zip::ZipArchive<RS>, mtd: &ModTypeData) -> anyhow::Result<jvm::ModEntries> {
     match mtd {
         ModTypeData::Fabric(_) => {
             if let Some(ix) = zipfile.index_for_name("fabric.mod.json") {

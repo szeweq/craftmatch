@@ -173,7 +173,7 @@ pub fn gather_tags<RS: Read + Seek>(mut zar: zip::ZipArchive<RS>) -> Result<Tags
     })
 }
 
-pub fn get_raw_data(zip: &mut zip::ZipArchive<impl Read + Seek>, name: &str) -> Option<Vec<u8>> {
+pub fn get_raw_data<RS: Read + Seek>(zip: &mut zip::ZipArchive<RS>, name: &str) -> Option<Vec<u8>> {
     let idx = zip.index_for_name(name)?;
     let mut file = zip.by_index(idx).ok()?;
     let mut buf = vec![0; file.size() as usize];
@@ -202,7 +202,7 @@ impl <R> FromIterator<R> for RecipeTypeMap where R: AsRef<Self> {
     }
 }
 
-pub fn gather_recipes(zipfile: &mut zip::ZipArchive<impl Read + Seek>) -> Result<RecipeTypeMap> {
+pub fn gather_recipes<RS: Read + Seek>(zipfile: &mut zip::ZipArchive<RS>) -> Result<RecipeTypeMap> {
     let recipes = ext::zip_file_ext_iter(zipfile, Extension::Json).try_fold(HashMap::<Box<str>, Vec<Box<str>>>::new(), |mut recipes, file| {
         let mut file = file?;
         let filename = file.name().to_string();
@@ -228,7 +228,7 @@ pub fn gather_recipes(zipfile: &mut zip::ZipArchive<impl Read + Seek>) -> Result
 #[derive(Serialize)]
 pub struct PlayableFiles(Box<[Box<str>]>);
 
-pub fn gather_playable_files(zar: &zip::ZipArchive<impl Read + Seek>) -> PlayableFiles {
+pub fn gather_playable_files<RS: Read + Seek>(zar: &zip::ZipArchive<RS>) -> PlayableFiles {
     let mut files = Extension::Ogg.names_iter(zar).map(Box::from).collect::<Vec<_>>();
     files.sort();
     PlayableFiles(files.into_boxed_slice())

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::{Read, Seek}, sync::Mutex};
+use std::{collections::HashMap, io::{Read, Seek}, sync::Mutex, time};
 
 use cafebabe::attributes::{AnnotationElement, AnnotationElementValue, AttributeData};
 use once_cell::sync::Lazy;
@@ -7,10 +7,10 @@ use zip::ZipArchive;
 
 use crate::{ext, jclass::{self, pool::PoolIter}};
 
-pub static PARSE_TIMES: Lazy<Mutex<HashMap<Box<str>, std::time::Duration>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+pub static PARSE_TIMES: Lazy<Mutex<HashMap<Box<str>, time::Duration>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
 fn parse_class_safe(b: &[u8], bytecode: bool) -> Result<cafebabe::ClassFile<'_>, cafebabe::ParseError> {
-    let now = std::time::Instant::now();
+    let now = time::Instant::now();
     match cafebabe::parse_class_with_options(b, cafebabe::ParseOptions::default().parse_bytecode(bytecode)) {
         Ok(x) => {
             PARSE_TIMES.lock().unwrap().insert(x.this_class.clone().into(), now.elapsed());
@@ -47,13 +47,14 @@ where F: FnMut(jclass::JClassReader<&mut zip::read::ZipFile, jclass::AtInterface
 }
 
 pub fn gather_inheritance_v2<RS: Read + Seek>(mut zar: ZipArchive<RS>) -> anyhow::Result<ext::Inheritance> {
+    use std::str::from_utf8;
     let mut inh = ext::Inheritance::default();
     zip_each_jclass(&mut zar, |jcr| {
         let ajcn = jcr.class_name()?;
-        let cname = std::str::from_utf8(ajcn)?;
+        let cname = from_utf8(ajcn)?;
         let ci = inh.find(cname);
         if let Some(ajcn) = jcr.super_class()? {
-            let s = std::str::from_utf8(ajcn)?;
+            let s = from_utf8(ajcn)?;
             if s != "java/lang/Object" {
                 inh.add_inherit(ci, s);
             }
@@ -61,7 +62,7 @@ pub fn gather_inheritance_v2<RS: Read + Seek>(mut zar: ZipArchive<RS>) -> anyhow
         let (_, av) = jcr.interfaces()?;
         for ajcn in av {
             let ajcn = ajcn?;
-            let s = std::str::from_utf8(&ajcn)?;
+            let s = from_utf8(&ajcn)?;
             inh.add_inherit(ci, s);
         }
         Ok(())
@@ -128,10 +129,10 @@ pub fn gather_complexity<RS: Read + Seek>(mut zar: ZipArchive<RS>) -> anyhow::Re
 fn find_annotation<'a>(cf: &'a cafebabe::ClassFile<'a>, name: &'a str) -> Option<&'a cafebabe::attributes::Annotation<'a>> {
     cf.attributes.iter().find_map(|a| {
         match &a.data {
-            AttributeData::RuntimeVisibleAnnotations(an) |
-            AttributeData::RuntimeInvisibleAnnotations(an) => an,
+            AttributeData::RuntimeVisibleAnnotations(van) |
+            AttributeData::RuntimeInvisibleAnnotations(van) => van,
             _ => { return None }
-        }.iter().find(|a| a.type_descriptor == name)
+        }.iter().find(|an| an.type_descriptor == name)
     })
 }
 
@@ -193,12 +194,12 @@ pub fn scan_forge_mod_entries<RS: Read + Seek>(zar: &mut ZipArchive<RS>, names: 
     Ok(found.into_iter().flatten().collect())
 }
 
-pub fn scan_fabric_mod_entry(zipfile: &mut zip::ZipArchive<impl Read + Seek>, classpath: &str) -> anyhow::Result<Box<str>> {
-    let classfile = classpath.replace('.', "/") + ".class";
+pub fn scan_fabric_mod_entry<RS: Read + Seek>(zipfile: &mut zip::ZipArchive<RS>, classpath: &str) -> anyhow::Result<Box<str>> {
+    let mut classfile = classpath.replace('.', "/");
+    classfile.push_str(".class");
     let mut zf = zipfile.by_name(&classfile)?;
     let mut buf = Vec::new();
     zf.read_to_end(&mut buf)?;
     let jcr = jclass::JClassReader::new(buf.as_slice())?;
-    let cn = jcr.class_name()?;
-    Ok(cn.to_string().into_boxed_str())
+    jcr.class_name().map(|x| x.to_string().into_boxed_str())
 }
