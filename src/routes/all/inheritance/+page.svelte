@@ -1,14 +1,15 @@
 <script lang="ts">
-  import Paginator from '$lib/Paginator.svelte';
-  import { filterBy, sortBy } from '$lib/query';
+  import Paginator from '$lib/Paginator.svelte'
+  import QInput from '$lib/QInput.svelte'
+  import { sortBy } from '$lib/query'
+  import { queryable } from '$lib/queryable.svelte'
   const perPage = 40
   let {data}: { data: import('./$types').PageData } = $props()
-  let q = $state("")
+  let q = queryable(() => data.indices, x => x[0])
   let page = $state(0)
-  let queried = $derived(filterBy(data.indices, q, ([s]) => s))
-  let pages = $derived(Math.ceil(queried.length / perPage))
+  let pages = $derived(Math.ceil(q.queried.length / perPage))
   let sortCount = $state(false)
-  let sorted = $derived(sortBy(queried, sortCount && (([,j]) => data.inherits[j].length)))
+  let sorted = $derived(sortBy(q.queried, sortCount && (([,j]) => data.inherits[j].length)))
   let selected = $state(-1)
   let selectedString = $derived.by(() => selected >= 0 ? data.indices.find(([,i]) => i == selected)![0] : "")
   let selectedList = $derived.by(() => selected >= 0 ? data.inherits[selected].map(k => data.indices.find(([,j]) => j == k)![0]) : [])
@@ -18,10 +19,7 @@
   })
 </script>
 <div>
-  <label class="input-group">
-    <input type="text" bind:value={q} />
-    <span>{queried.length}/{data.indices.length}</span>
-  </label>
+  <QInput {q} />
   <input id="sortCount" type="checkbox" bind:checked={sortCount} />
   <label for="sortCount">Sort by count</label>
 </div>

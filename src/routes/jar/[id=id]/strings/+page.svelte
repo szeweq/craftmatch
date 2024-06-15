@@ -1,20 +1,18 @@
 <script lang="ts">
   import Paginator from '$lib/Paginator.svelte'
-  import { filterBy, sortBy } from '$lib/query'
+  import QInput from '$lib/QInput.svelte'
+  import { sortBy } from '$lib/query'
+  import { queryable } from '$lib/queryable.svelte'
   const perPage = 40
   let {data}: { data: import('./$types').PageData } = $props()
-  let q = $state("")
+  let q = queryable(() => data?.strings ?? [], x => x[0])
   let page = $state(0)
-  let queried = $derived(filterBy(data?.strings || [], q, ([s]) => s))
-  let pages = $derived(Math.ceil(queried.length / perPage))
+  let pages = $derived(Math.ceil(q.queried.length / perPage))
   let sortCount = $state(false)
-  let sorted = $derived(sortBy(queried, sortCount && (([,j]) => j.length)))
+  let sorted = $derived(sortBy(q.queried, sortCount && (([,j]) => j.length)))
 </script>
 <section class="sticky top-0 rounded-md b-solid b-white/40 b-2 bgvar-c-bg1 p-1">
-  <label class="input-group">
-    <input type="text" bind:value={q} />
-    <span>{queried.length}/{data?.strings.length ?? 0}</span>
-  </label>
+  <QInput {q} />
   <input id="sortCount" type="checkbox" bind:checked={sortCount} />
   <label for="sortCount">Sort by count</label>
   <Paginator bind:page={page} count={pages} />
