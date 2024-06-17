@@ -5,7 +5,7 @@ use rayon::iter::ParallelIterator;
 use serde::Deserialize;
 use state::TypeMap;
 
-use crate::{ext, extract, id::Id, jvm, manifest};
+use crate::{ext, extract, id::Id, jvm, loader};
 
 #[derive(Clone)]
 pub struct WSLock(pub Arc<Mutex<DirWS>>);
@@ -161,8 +161,8 @@ impl WSMode {
 
 pub type Gatherer<T> = fn(&FileInfo) -> anyhow::Result<T>;
 
-pub fn gather_mod_data(fi: &FileInfo) -> anyhow::Result<manifest::ModTypeData> {
-    manifest::extract_mod_info(&mut fi.open_buf()?)
+pub fn gather_mod_data(fi: &FileInfo) -> anyhow::Result<loader::ModTypeData> {
+    loader::extract_mod_info(&mut fi.open_buf()?)
 }
 pub fn gather_file_type_sizes(fi: &FileInfo) -> anyhow::Result<extract::ModFileTypeSizes> {
     extract::compute_file_type_sizes(&mut fi.open_mem()?)
@@ -183,8 +183,8 @@ pub fn gather_str_index(fi: &FileInfo) -> anyhow::Result<jvm::StrIndexMapped> {
     jvm::gather_str_index_v2(fi.open_mem()?)
 }
 pub fn gather_mod_entries(fi: &FileInfo) -> anyhow::Result<jvm::ModEntries> {
-    let Some(moddata) = fi.get::<manifest::ModTypeData>() else { return Err(anyhow::anyhow!("No moddata")) };
-    manifest::extract_mod_entries(&mut fi.open_mem()?, moddata.as_ref())
+    let Some(moddata) = fi.get::<loader::ModTypeData>() else { return Err(anyhow::anyhow!("No moddata")) };
+    loader::extract_mod_entries(&mut fi.open_mem()?, moddata.as_ref())
 }
 pub fn gather_recipes(fi: &FileInfo) -> anyhow::Result<extract::RecipeTypeMap> {
     extract::gather_recipes(&mut fi.open_mem()?)

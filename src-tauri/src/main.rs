@@ -2,7 +2,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod rt;
-mod manifest;
 mod extract;
 mod workspace;
 mod ext;
@@ -12,6 +11,7 @@ mod slice;
 mod jclass;
 mod imp;
 mod id;
+mod loader;
 
 use std::{borrow::Cow, collections::HashMap, fs::File, io, sync::Arc, time::Instant};
 use id::Id;
@@ -117,7 +117,7 @@ async fn ws_name(state: State<'_, WSLock>, id: Id) -> Result<String, ()> {
 }
 
 #[command]
-fn ws_mod_data(state: State<'_, WSLock>, id: Id) -> Option<Arc<manifest::ModTypeData>> {
+fn ws_mod_data(state: State<'_, WSLock>, id: Id) -> Option<Arc<loader::ModTypeData>> {
     state.mods().and_then(|afe| {
         afe.gather_by_id(id, workspace::gather_mod_data)
     }).inspect_err(|e| eprintln!("Error in ws_mod_data: {e}")).ok()
