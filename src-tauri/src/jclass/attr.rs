@@ -2,7 +2,7 @@ use std::{marker::PhantomData, ops::Deref};
 
 use bytes::{Buf, Bytes};
 
-use super::{idx::{ClassInfo, ConstVal, Index, NameAndType, Utf8}, jtype::{OfClass, OfField, OfMethod}, pool::{ClassPool, JVal, PoolItem}, JStr};
+use super::{idx::{ClassInfo, ConstVal, Index, NameAndType, Utf8}, jtype::{OfClass, OfField, OfMethod}, pool::{ClassPool, JVal}, JStr};
 
 pub enum JAttr<T> {
     AnnotationDefault,
@@ -357,7 +357,7 @@ pub struct AnnElemPair {
     val: ElemVal
 }
 impl Parsing for AnnElemPair {
-    fn parse(b: &mut Bytes, pool: &ClassPool) -> anyhow::Result<Self> {
+    fn parse(b: &mut Bytes, _pool: &ClassPool) -> anyhow::Result<Self> {
         let name_idx = Index::try_from(b.get_u16())?;
         let val = ElemVal{};
         Ok(Self { name_idx, val })

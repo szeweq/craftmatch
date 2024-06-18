@@ -1,9 +1,9 @@
-use std::{io::{Read, Seek, SeekFrom}, marker::PhantomData};
+use std::io::{Read, Seek, SeekFrom};
 
 use byteorder::{BE, ReadBytesExt};
 use bytes::Bytes;
 
-use super::{idx::{ClassInfo, Index}, jtype, pool::{ClassPool, PoolItem}, skip_attr_info, skip_member_info, Attrs, JStr, MemberIter};
+use super::{idx::{ClassInfo, Index}, iter::MemberIter, jtype, pool::{ClassPool, PoolItem}, read_magic, skip_attr_info, skip_member_info, Attrs, JStr};
 
 
 pub struct JClassSeekReader<R: Read + Seek> {
@@ -23,9 +23,7 @@ pub struct JClassSeekReader<R: Read + Seek> {
 
 impl<R: Read + Seek> JClassSeekReader<R> {
     pub fn new(mut r: R) -> anyhow::Result<Self> {
-        if !matches!(r.read_u32::<BE>(), Ok(0xCAFEBABE)) {
-            anyhow::bail!("Invalid magic");
-        }
+        read_magic(&mut r)?;
         let mut cv = [0u16; 3];
         let [minor, major, pool_count] = match r.read_u16_into::<BE>(&mut cv) {
             Ok(()) => cv,
@@ -105,14 +103,14 @@ impl<R: Read + Seek> JClassSeekReader<R> {
     }
     pub fn fields(&mut self) -> anyhow::Result<MemberIter<jtype::OfField>> {
         let (len, b) = self.fill_data(self.pos_fields, self.pos_methods)?;
-        Ok(MemberIter { b, pool: self.pool.clone(), cur: 0, len, _t: PhantomData })
+        Ok(MemberIter::new(b, self.pool.clone(), len))
     }
     pub fn methods(&mut self) -> anyhow::Result<MemberIter<jtype::OfMethod>> {
         let (len, b) = self.fill_data(self.pos_methods, self.pos_attributes)?;
-        Ok(MemberIter { b, pool: self.pool.clone(), cur: 0, len, _t: PhantomData })
+        Ok(MemberIter::new(b, self.pool.clone(), len))
     }
     pub fn class_attrs(&mut self) -> anyhow::Result<Attrs<jtype::OfClass>> {
         let (len, b) = self.fill_data(self.pos_attributes, self.end)?;
-        Ok(Attrs { b, pool: self.pool.clone(), cur: 0, len, _t: PhantomData })
+        Ok(Attrs::new(b, self.pool.clone(), len))
     }
 }

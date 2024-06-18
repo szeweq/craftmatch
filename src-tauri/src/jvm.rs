@@ -33,7 +33,7 @@ where for<'a> F: FnMut(&'a cafebabe::ClassFile<'a>) -> anyhow::Result<()> {
 
 #[inline]
 fn zip_each_jclass<RS: Read + Seek, F>(zar: &mut ZipArchive<RS>, mut f: F) -> anyhow::Result<()>
-where F: FnMut(jclass::JClassReader<&mut zip::read::ZipFile, jclass::AtInterfaces>) -> anyhow::Result<()> {
+where F: FnMut(jclass::JClassReader<&mut zip::read::ZipFile, jclass::read::AtInterfaces>) -> anyhow::Result<()> {
     ext::zip_file_ext_iter(zar, ext::Extension::Class).try_for_each(|zf| {
         let mut zf = zf?;
         let jcr = match jclass::JClassReader::new(&mut zf) {
