@@ -43,15 +43,13 @@ impl Extractor for ExtractLoader {
 
 fn get_extractor<RS: Read + Seek>(zip: &mut zip::ZipArchive<RS>) -> anyhow::Result<ExtractLoader> {
     Ok(if let Some(ix) = zip.index_for_name("fabric.mod.json") {
-        let manifest: serde_json::Map<String, serde_json::Value> = serde_json::from_reader(zip.by_index(ix)?)?;
-        Ld::Fabric(fabric::ExtractFabric(manifest))
+        Ld::Fabric(fabric::ExtractFabric(serde_json::from_reader(zip.by_index(ix)?)?))
     } else if let Some(ix) = zip.index_for_name("META-INF/mods.toml") {
         let mut mf = zip.by_index(ix)?;
         let mut s = String::with_capacity(mf.size() as usize);
         mf.read_to_string(&mut s)?;
         drop(mf);
-        let manifest: toml::Table = toml::from_str(&s)?;
-        Ld::Forge(forge::ExtractForge(manifest))
+        Ld::Forge(forge::ExtractForge(toml::from_str(&s)?))
     } else {
         return Err(anyhow!("No manifest in jar"));
     })
@@ -86,14 +84,18 @@ pub fn extract_mod_info<RS: Read + Seek>(zar: &mut zip::ZipArchive<RS>) -> anyho
     })
 }
 
-
+#[allow(dead_code)]
 pub struct VersionInfo {
     pub provided: Option<Box<str>>,
     pub required: Vec<Box<str>>,
     pub optional: Vec<Box<str>>
 }
+
+#[allow(dead_code)]
 pub struct VersionMap(HashMap<Box<str>, VersionInfo>);
 
+
+#[allow(dead_code)]
 fn version_from_mf<RS: Read + Seek>(zip: &mut zip::ZipArchive<RS>) -> anyhow::Result<Box<str>> {
     let manifest = zip.by_name("META-INF/MANIFEST.MF")?;
     let bufr = BufReader::new(manifest);
