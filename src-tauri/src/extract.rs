@@ -135,12 +135,12 @@ pub struct JsonTagsList {
 #[serde(untagged)]
 pub enum TagEntry {
     Simple(Box<str>),
-    WithReq { id: Box<str>, required: bool }
+    Struct { id: Box<str> }
 }
 impl TagEntry {
     pub const fn id(&self) -> &str {
         match self {
-            Self::WithReq { id, .. } | Self::Simple(id) => id
+            Self::Struct { id, .. } | Self::Simple(id) => id
         }
     }
 }
