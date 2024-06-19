@@ -1,48 +1,70 @@
-use std::io::{Read, Seek};
+use std::{collections::HashMap, io::{Read, Seek}};
 
 use crate::jvm;
 
 use super::{no_x_in_manifest, Extractor, ModData};
 
-pub struct ExtractForge(pub toml::Table);
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct ForgeMetadata {
+    license: Option<Box<str>>,
+    //#[serde(rename = "issueTrackerURL")]
+    //issue_tracker_url: Option<Box<str>>,
+    mods: Box<[ForgeModInfo]>,
+    dependencies: HashMap<Box<str>, Vec<ForgeDependency>>
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct ForgeModInfo {
+    mod_id: Box<str>,
+    display_name: Box<str>,
+    version: Box<str>,
+    authors: Option<Box<str>>,
+    description: Option<Box<str>>,
+    logo_file: Option<Box<str>>,
+    #[serde(rename = "displayURL")]
+    display_url: Option<Box<str>>,
+}
+
+#[allow(dead_code)]
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct ForgeDependency {
+    mod_id: Box<str>,
+    mandatory: bool,
+    version_range: Box<str>,
+    ordering: Option<Box<str>>,
+    side: Option<Box<str>>
+}
+
+pub struct ExtractForge(pub(super) ForgeMetadata);
 
 impl Extractor for ExtractForge {
     type Data = Box<[ModData]>;
     fn mod_info(&self) -> anyhow::Result<Self::Data> {
-        let manifest = &self.0;
-        let Some(toml::Value::Array(mods)) = manifest.get("mods") else { return Err(no_x_in_manifest("mods")); };
-        let x = mods.iter()
-            .filter_map(|v| v.as_table())
-            .filter_map(|m| {
-                let name = get_str(m, "displayName")?;
-                let slug = get_str(m, "modId")?;
-                let version = get_str(m, "version")?;
-                Some(ModData {
-                    name: name.into(),
-                    slug: slug.into(),
-                    version: version.into(),
-                    authors: get_str(m, "authors").map(Box::from),
-                    description: get_str(m, "description").map(Box::from),
-                    license: get_str(manifest, "license").map(Box::from),
-                    logo_path: get_str(m, "logoFile").map(Box::from)
-                })
+        let license = &self.0.license;
+        let mods = &self.0.mods;
+        let x = mods.iter().map(|fmi| ModData {
+                name: fmi.display_name.clone(),
+                slug: fmi.mod_id.clone(),
+                version: fmi.version.clone(),
+                authors: fmi.authors.clone(),
+                description: fmi.description.clone(),
+                license: license.clone(),
+                logo_path: fmi.logo_file.clone(),
+                url: fmi.display_url.clone()
             })
             .collect::<Box<_>>();
         if x.is_empty() { return Err(no_x_in_manifest("mods")); }
         Ok(x)
     }
     fn deps(&self) -> anyhow::Result<()> {
-        let manifest = &self.0;
-        if let Some(dependencies) = manifest.get("dependencies").and_then(|v| v.as_table()) {
-            for (dn, dv) in dependencies {
-                eprintln!("{dn}");
-                if let Some(depends) = dv.as_array() {
-                    for d in depends {
-                        eprintln!(" - {d}");
-                    }
-                } else {
-                    eprintln!(" - {dv:?}");
-                }
+        let depm = &self.0.dependencies;
+        for (dn, dv) in depm {
+            eprintln!("{dn}");
+            for d in dv {
+                eprintln!(" - {}", d.mod_id);
             }
         }
         Ok(())
@@ -53,8 +75,4 @@ impl Extractor for ExtractForge {
         let classes = jvm::scan_forge_mod_entries(zipfile, &slugs)?;
         Ok(jvm::ModEntries { classes })
     }
-}
-
-fn get_str<'a>(t: &'a toml::Table, key: &'static str) -> Option<&'a str> {
-    t.get(key).and_then(|v| v.as_str())
 }

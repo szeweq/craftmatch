@@ -70,7 +70,8 @@ pub struct ModData {
     description: Option<Box<str>>,
     authors: Option<Box<str>>,
     license: Option<Box<str>>,
-    logo_path: Option<Box<str>>
+    logo_path: Option<Box<str>>,
+    url: Option<Box<str>>,
 }
 
 fn no_x_in_manifest(key: &'static str) -> anyhow::Error {

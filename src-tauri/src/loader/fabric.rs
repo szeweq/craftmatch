@@ -1,57 +1,56 @@
-use std::io::{Read, Seek};
+use std::{collections::HashMap, io::{Read, Seek}};
 
 use crate::jvm;
 
-use super::{no_x_in_manifest, Extractor, ModData};
+use super::{Extractor, ModData};
 use anyhow::anyhow;
 
-pub struct ExtractFabric(pub serde_json::Map<String, serde_json::Value>);
+#[derive(serde::Deserialize)]
+pub(super) struct FabricMetadata {
+    id: Box<str>,
+    name: Box<str>,
+    version: Box<str>,
+    authors: Box<[Box<str>]>,
+    description: Option<Box<str>>,
+    license: Option<Box<str>>,
+    icon: Option<Box<str>>,
+    contact: HashMap<Box<str>, Box<str>>,
+    depends: HashMap<Box<str>, Box<str>>,
+    suggests: HashMap<Box<str>, Box<str>>,
+    entrypoints: HashMap<Box<str>, Box<[Box<str>]>> 
+}
+
+pub struct ExtractFabric(pub(super) FabricMetadata);
 
 impl Extractor for ExtractFabric {
     type Data = Box<[ModData; 1]>;
     fn mod_info(&self) -> anyhow::Result<Self::Data> {
-        let manifest = &self.0;
-        let name = get_str(manifest, "name")?;
-        let slug = get_str(manifest, "id")?;
-        let version = get_str(manifest, "version")?;
-        let authors = manifest.get("authors")
-            .and_then(|v| v.as_array())
-            .map(|a| a.iter().filter_map(|x| x.as_str()).collect::<Vec<_>>().join(", ").into_boxed_str());
+        let fm = &self.0;
         Ok(Box::new([ModData {
-            name: name.into(),
-            slug: slug.into(),
-            version: version.into(),
-            description: get_opt_str(manifest, "description").map(Box::from),
-            authors,
-            license: get_opt_str(manifest, "license").map(Box::from),
-            logo_path: get_opt_str(manifest, "icon").map(Box::from)
+            name: fm.name.clone(),
+            slug: fm.id.clone(),
+            version: fm.version.clone(),
+            description: fm.description.clone(),
+            authors: (!fm.authors.is_empty()).then(|| fm.authors.join(", ").into_boxed_str()),
+            license: fm.license.clone(),
+            logo_path: fm.icon.clone(),
+            url: fm.contact.get("home").cloned()
         }]))
     }
     fn deps(&self) -> anyhow::Result<()> {
-        let manifest = &self.0;
-        let depends = manifest.get("depends");
-        let suggests = manifest.get("suggests");
-        eprintln!("depends: {depends:?}");
-        eprintln!("suggests: {suggests:?}");
+        let fm = &self.0;
+        eprintln!("depends: {:?}", fm.depends);
+        eprintln!("suggests: {:?}", fm.suggests);
         Ok(())
     }
     fn entries<RS: Read + Seek>(&self, zipfile: &mut zip::ZipArchive<RS>) -> anyhow::Result<jvm::ModEntries> {
-        let manifest = &self.0;
-        let entrypoints = manifest.get("entrypoints")
-            .and_then(|v| v.as_object()?.get("main")?.as_array())
+        let entrypoints = self.0.entrypoints.get("main")
             .ok_or_else(|| anyhow!("No entrypoints in fabric.mod.json"))?
-            .iter().filter_map(|v| v.as_str()).collect::<Box<_>>();
+            .iter().cloned().collect::<Box<_>>();
         let mut entries = Vec::with_capacity(entrypoints.len());
-        for &e in entrypoints.iter() {
+        for e in entrypoints.iter() {
             entries.push(jvm::scan_fabric_mod_entry(zipfile, e)?);
         }
         Ok(jvm::ModEntries { classes: entries.into_boxed_slice() })
     }
-}
-
-fn get_str<'a>(m: &'a serde_json::Map<String, serde_json::Value>, key: &'static str) -> anyhow::Result<&'a str> {
-    m.get(key).and_then(|v| v.as_str()).ok_or_else(|| no_x_in_manifest(key))
-}
-fn get_opt_str<'a>(m: &'a serde_json::Map<String, serde_json::Value>, key: &'static str) -> Option<&'a str> {
-    m.get(key).and_then(|v| v.as_str())
 }
