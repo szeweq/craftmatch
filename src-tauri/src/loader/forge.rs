@@ -2,7 +2,7 @@ use std::{collections::HashMap, io::{Read, Seek}};
 
 use crate::jvm;
 
-use super::{no_x_in_manifest, Extractor, ModData};
+use super::{Extractor, ModData};
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -42,22 +42,20 @@ pub struct ExtractForge(pub(super) ForgeMetadata);
 
 impl Extractor for ExtractForge {
     type Data = Box<[ModData]>;
-    fn mod_info(&self) -> anyhow::Result<Self::Data> {
+    fn mod_info(&self) -> Self::Data {
         let license = &self.0.license;
         let mods = &self.0.mods;
-        let x = mods.iter().map(|fmi| ModData {
-                name: fmi.display_name.clone(),
-                slug: fmi.mod_id.clone(),
-                version: fmi.version.clone(),
-                authors: fmi.authors.clone(),
-                description: fmi.description.clone(),
-                license: license.clone(),
-                logo_path: fmi.logo_file.clone(),
-                url: fmi.display_url.clone()
-            })
-            .collect::<Box<_>>();
-        if x.is_empty() { return Err(no_x_in_manifest("mods")); }
-        Ok(x)
+        mods.iter().map(|fmi| ModData {
+            name: fmi.display_name.clone(),
+            slug: fmi.mod_id.clone(),
+            version: fmi.version.clone(),
+            authors: fmi.authors.clone(),
+            description: fmi.description.clone(),
+            license: license.clone(),
+            logo_path: fmi.logo_file.clone(),
+            url: fmi.display_url.clone()
+        })
+        .collect::<Box<_>>()
     }
     fn deps(&self) -> anyhow::Result<()> {
         let depm = &self.0.dependencies;
@@ -70,7 +68,7 @@ impl Extractor for ExtractForge {
         Ok(())
     }
     fn entries<RS: Read + Seek>(&self, zipfile: &mut zip::ZipArchive<RS>) -> anyhow::Result<jvm::ModEntries> {
-        let mi = self.mod_info()?;
+        let mi = self.mod_info();
         let slugs = mi.iter().map(|m| &*m.slug).collect::<Box<_>>();
         let classes = jvm::scan_forge_mod_entries(zipfile, &slugs)?;
         Ok(jvm::ModEntries { classes })

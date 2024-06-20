@@ -24,9 +24,9 @@ pub struct ExtractFabric(pub(super) FabricMetadata);
 
 impl Extractor for ExtractFabric {
     type Data = Box<[ModData; 1]>;
-    fn mod_info(&self) -> anyhow::Result<Self::Data> {
+    fn mod_info(&self) -> Self::Data {
         let fm = &self.0;
-        Ok(Box::new([ModData {
+        Box::new([ModData {
             name: fm.name.clone(),
             slug: fm.id.clone(),
             version: fm.version.clone(),
@@ -35,7 +35,7 @@ impl Extractor for ExtractFabric {
             license: fm.license.clone(),
             logo_path: fm.icon.clone(),
             url: fm.contact.get("home").cloned()
-        }]))
+        }])
     }
     fn deps(&self) -> anyhow::Result<()> {
         let fm = &self.0;

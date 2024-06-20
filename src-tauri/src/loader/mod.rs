@@ -8,7 +8,7 @@ pub mod forge;
 
 pub trait Extractor {
     type Data;
-    fn mod_info(&self) -> anyhow::Result<Self::Data>;
+    fn mod_info(&self) -> Self::Data;
     fn deps(&self) -> anyhow::Result<()>;
     fn entries<RS: Read + Seek>(&self, zipfile: &mut zip::ZipArchive<RS>) -> anyhow::Result<jvm::ModEntries>;
 }
@@ -21,10 +21,10 @@ pub enum Ld<ForFabric: Sized, ForForge: Sized> {
 type ExtractLoader = Ld<fabric::ExtractFabric, forge::ExtractForge>;
 impl Extractor for ExtractLoader {
     type Data = Ld<Box<[ModData; 1]>, Box<[ModData]>>;
-    fn mod_info(&self) -> anyhow::Result<Self::Data> {
+    fn mod_info(&self) -> Self::Data {
         match self {
-            Self::Fabric(x) => x.mod_info().map(Ld::Fabric),
-            Self::Forge(x) => x.mod_info().map(Ld::Forge),
+            Self::Fabric(x) => Ld::Fabric(x.mod_info()),
+            Self::Forge(x) => Ld::Forge(x.mod_info()),
         }
     }
     fn deps(&self) -> anyhow::Result<()> {
@@ -74,12 +74,8 @@ pub struct ModData {
     url: Option<Box<str>>,
 }
 
-fn no_x_in_manifest(key: &'static str) -> anyhow::Error {
-    anyhow!("No {key} in manifest")
-}
-
 pub fn extract_mod_info<RS: Read + Seek>(zar: &mut zip::ZipArchive<RS>) -> anyhow::Result<ModTypeData> {
-    Ok(match get_extractor(zar)?.mod_info()? {
+    Ok(match get_extractor(zar)?.mod_info() {
         Ld::Fabric(md) => ModTypeData::Fabric(md),
         Ld::Forge(md) => ModTypeData::Forge(md)
     })
