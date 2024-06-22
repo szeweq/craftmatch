@@ -14,9 +14,9 @@ pub(super) struct FabricMetadata {
     description: Option<Box<str>>,
     license: Option<Box<str>>,
     icon: Option<Box<str>>,
-    contact: HashMap<Box<str>, Box<str>>,
-    depends: HashMap<Box<str>, Box<str>>,
-    suggests: HashMap<Box<str>, Box<str>>,
+    contact: Option<HashMap<Box<str>, Box<str>>>,
+    depends: Option<HashMap<Box<str>, Box<str>>>,
+    suggests: Option<HashMap<Box<str>, Box<str>>>,
     entrypoints: HashMap<Box<str>, Box<[Box<str>]>> 
 }
 
@@ -34,7 +34,7 @@ impl Extractor for ExtractFabric {
             authors: (!fm.authors.is_empty()).then(|| fm.authors.join(", ").into_boxed_str()),
             license: fm.license.clone(),
             logo_path: fm.icon.clone(),
-            url: fm.contact.get("home").cloned()
+            url: fm.contact.as_ref().and_then(|m| m.get("home").cloned())
         }])
     }
     fn deps(&self) -> anyhow::Result<()> {
