@@ -27,7 +27,7 @@
   <section>
     <h2>Sign in</h2>
     {#if step == 0}
-      <nav>
+      <nav class="flex gap-1">
         <button onclick={login}>Log in with GitHub</button>
         <button onclick={onclose}>Close</button>
       </nav>

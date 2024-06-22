@@ -9,7 +9,7 @@
   }
 </script>
 <h1>File: {data.name}</h1>
-<nav class="py-1">
+<nav class="actions py-1">
   <button onclick={() => wsShow(data.id)}>Show</button>
   <a role="button" href="/jar/{data.id}/strings">Strings</a>
   <a role="button" href="/jar/{data.id}/sizes">Sizes</a>

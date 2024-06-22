@@ -49,7 +49,7 @@
       {/each}
     </tr>
   </thead>
-  <tbody class="text-sm hover:*:bg-white/10">
+  <tbody class="text-xs hover:*:bg-white/10">
     {#each typesSorted as t (t)}
       {@const d = data.sizes[t]}
       <tr class="*:p-1 [&>td:not(:first-child)]:text-end hover:*:bg-white/10">
