@@ -73,6 +73,9 @@ pub struct ModData {
     logo_path: Option<Box<str>>,
     url: Option<Box<str>>,
 }
+impl ModData {
+    pub const fn slug(&self) -> &str { &self.slug }
+}
 
 pub fn extract_mod_info<RS: Read + Seek>(zar: &mut zip::ZipArchive<RS>) -> anyhow::Result<ModTypeData> {
     Ok(match get_extractor(zar)?.mod_info() {

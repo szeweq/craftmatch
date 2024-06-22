@@ -12,6 +12,7 @@ mod jclass;
 mod imp;
 mod id;
 mod loader;
+mod auth;
 
 use std::{borrow::Cow, collections::HashMap, fs::File, io, sync::Arc, time::Instant};
 use id::Id;
@@ -19,6 +20,34 @@ use tauri::{command, generate_context, generate_handler, http::Response, Manager
 use workspace::{WSLock, WSMode};
 
 use crate::workspace::AllGather;
+
+#[command]
+async fn auth(app: tauri::AppHandle, state: State<'_, auth::GithubClient>) -> Result<bool, ()> {
+    let r = state.authorize(|c, u| Ok(app.emit("authcode", (c, u))?)).await.map_err(|e| eprintln!("Error in auth: {} / {:?}", e, e));
+    if r.is_ok() {
+        let ghc = state.inner().clone();
+        rt::spawn(async move {
+            if let Ok(uinfo) = ghc.user_info().await.map_err(|e| eprintln!("Error in user_info: {} / {:?}", e, e)) {
+                if let Err(e) = app.emit("auth", uinfo) {
+                    eprintln!("Emit auth error: {e}");
+                }
+            }
+        });
+    }
+    
+    Ok(r.is_ok())
+}
+
+#[command]
+async fn logout(app: tauri::AppHandle, state: State<'_, auth::GithubClient>) -> Result<(), ()> {
+    state.remove_token();
+    rt::spawn(async move {
+        if let Err(e) = app.emit("auth", None::<(Box<str>, Box<str>, u8)>) {
+            eprintln!("Emit auth error: {e}");
+        }
+    });
+    Ok(())
+}
 
 #[command]
 async fn load(app: tauri::AppHandle, state: State<'_, WSLock>) -> Result<(), ()> {
@@ -93,6 +122,11 @@ async fn ws_files(state: State<'_, WSLock>) -> Result<Vec<(Id, String, u64)>, ()
         Ok(x)
     });
     x.map_err(|e| eprintln!("Error in ws_files: {e}"))
+}
+
+#[command]
+async fn ws_namespaces(state: State<'_, WSLock>) -> Result<Vec<Box<str>>, ()> {
+    state.locking(|ws| Ok(ws.namespace_keys())).map_err(|e| eprintln!("Error in ws_namespaces: {e}"))
 }
 
 #[command]
@@ -229,8 +263,9 @@ fn dbg_parse_times() -> HashMap<Box<str>, f64> {
 fn main() {
     tauri::Builder::default()
         .manage(workspace::WSLock::new())
+        .manage(auth::GithubClient::setup().expect("Failed to setup github client"))
         .invoke_handler(generate_handler![
-            load, mod_dirs, open_workspace, close_workspace, ws_files, ws_show, ws_name, ws_mod_data, ws_str_index, ws_file_type_sizes, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries, ws_recipes, ws_mod_playable, dbg_parse_times
+            auth, logout, load, mod_dirs, open_workspace, close_workspace, ws_files, ws_namespaces, ws_show, ws_name, ws_mod_data, ws_str_index, ws_file_type_sizes, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries, ws_recipes, ws_mod_playable, dbg_parse_times
         ])
         .register_asynchronous_uri_scheme_protocol("raw", |app, req, resp| {
             let now = std::time::Instant::now();

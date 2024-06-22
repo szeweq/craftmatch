@@ -1,11 +1,11 @@
 use std::{fs::{self, File}, io::{self, BufReader}, path::{Path, PathBuf}, sync::{Arc, Mutex, RwLock}};
 
 use indexmap::IndexMap;
-use rayon::iter::ParallelIterator;
+use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use serde::Deserialize;
 use state::TypeMap;
 
-use crate::{ext, extract, id::Id, jvm, loader};
+use crate::{ext, extract, id::Id, jvm, loader::{self, ModTypeData}};
 
 #[derive(Clone)]
 pub struct WSLock(pub Arc<Mutex<DirWS>>);
@@ -25,14 +25,20 @@ impl WSLock {
 }
 
 type WSFiles = Arc<RwLock<IndexMap<Id, FileInfo>>>;
+type Namespaces = Arc<RwLock<IndexMap<Box<str>, Id>>>;
 
 pub struct DirWS {
     dir_path: Box<Path>,
     mod_entries: WSFiles,
+    namespaces: Namespaces
 }
 impl DirWS {
     pub fn new() -> Self {
-        Self { dir_path: Box::from(Path::new("")), mod_entries: Arc::new(RwLock::new(IndexMap::new())) }
+        Self {
+            dir_path: Box::from(Path::new("")),
+            mod_entries: Arc::new(RwLock::new(IndexMap::new())),
+            namespaces: Arc::new(RwLock::new(IndexMap::new())),
+        }
     }
     pub fn reset(&mut self) {
         *self = Self::new();
@@ -56,7 +62,17 @@ impl DirWS {
             }
         }).collect::<IndexMap<_, _>>();
         jars.sort_unstable_keys();
+
+        let ns = jars.par_iter_mut()
+            .filter_map(|(id, fi)| Some((*id, fi.get_or_gather(gather_mod_data).ok()?)))
+            .flat_map(|(id, md)| (match &*md {
+                ModTypeData::Fabric(d) => d.par_iter(),
+                ModTypeData::Forge(d) => d.par_iter(),
+            }).map(|d| (Box::from(d.slug()), id)).collect::<Vec<_>>())
+            .collect::<IndexMap<_, _>>();
+
         *self.mod_entries.write().unwrap() = jars;
+        *self.namespaces.write().unwrap() = ns;
         Ok(())
     }
     pub fn entry_path(&self, id: Id) -> anyhow::Result<Box<Path>> {
@@ -65,6 +81,9 @@ impl DirWS {
         let p = fi.path.clone();
         drop(fe);
         Ok(p)
+    }
+    pub fn namespace_keys(&self) -> Vec<Box<str>> {
+        self.namespaces.read().unwrap().keys().cloned().collect()
     }
 }
 

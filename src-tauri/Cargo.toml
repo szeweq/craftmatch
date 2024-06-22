@@ -1,8 +1,8 @@
 [package]
 name = "craftmatch"
-version = "0.0.0"
+version = "0.1.0"
 description = "A Tauri App"
-authors = ["you"]
+authors = ["Szeweq"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -22,13 +22,15 @@ base64 = "0.22"
 rayon = "1.10"
 cafebabe = "0.6.1"
 state = "0.6"
-uuid = {version = "1.8", features = ["v7", "serde"] }
+uuid = {version = "1.8", features = ["v7"] }
 byteorder = "1.5"
 bytes = "1.6"
 once_cell = "1.19"
 dirs = "5.0"
 opener = {version = "0.7", features = ["reveal"] }
 indexmap = {version = "2.2", features = ["rayon"] }
+oauth2 = "5.0.0-alpha"
+tokio = "1.38"
 
 [lints.clippy]
 nursery = {level = "warn", priority = -1}
