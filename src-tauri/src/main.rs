@@ -17,7 +17,7 @@ mod auth;
 use std::{borrow::Cow, collections::HashMap, fs::File, io, sync::Arc, time::Instant};
 use id::Id;
 use tauri::{command, generate_context, generate_handler, http::Response, Manager, State};
-use workspace::{WSLock, WSMode};
+use workspace::{Gatherer, WSLock, WSMode};
 
 use crate::workspace::AllGather;
 
@@ -86,27 +86,22 @@ async fn mod_dirs(app: tauri::AppHandle, state: State<'_, WSLock>, kind: imp::Re
 }
 
 #[command]
-async fn open_workspace(app: tauri::AppHandle, state: State<'_, WSLock>) -> Result<(), ()> {
+async fn workspace(app: tauri::AppHandle, state: State<'_, WSLock>, open: bool) -> Result<(), ()> {
     let astate = Arc::clone(&state.0);
     rt::spawn(async move {
-        let Some(dir) = rfd::AsyncFileDialog::new().pick_folder().await else { return };
-        if let Err(e) = astate.lock().unwrap().prepare(dir.into()) {
-            eprintln!("Opening workspace error: {e}");
-        }
-        if let Err(e) = app.emit("ws-open", true) {
-            eprintln!("Opening workspace error: {e}");
-        }
-    });
-    Ok(())
-}
-
-#[command]
-async fn close_workspace(app: tauri::AppHandle, state: State<'_, WSLock>) -> Result<(), ()> {
-    let astate = Arc::clone(&state.0);
-    rt::spawn(async move {
-        astate.lock().unwrap().reset();
-        if let Err(e) = app.emit("ws-open", false) {
-            eprintln!("Closing workspace error: {e}");
+        if open {
+            let Some(dir) = rfd::AsyncFileDialog::new().pick_folder().await else { return };
+            if let Err(e) = astate.lock().unwrap().prepare(dir.into()) {
+                eprintln!("Opening workspace error: {e}");
+            }
+            if let Err(e) = app.emit("ws-open", true) {
+                eprintln!("Opening workspace error: {e}");
+            }
+        } else {
+            astate.lock().unwrap().reset();
+            if let Err(e) = app.emit("ws-open", false) {
+                eprintln!("Closing workspace error: {e}");
+            }
         }
     });
     Ok(())
@@ -114,19 +109,22 @@ async fn close_workspace(app: tauri::AppHandle, state: State<'_, WSLock>) -> Res
 
 #[command]
 async fn ws_files(state: State<'_, WSLock>) -> Result<Vec<(Id, String, u64)>, ()> {
-    let x = state.mods().and_then(|afe| {
+    state.mods().and_then(|afe| {
         let mut x = afe.read().map_err(|_| anyhow::anyhow!("fe read error"))?.iter()
             .map(|(id, fe)| (*id, fe.name(), fe.size()))
             .collect::<Vec<_>>();
         x.sort_by_cached_key(|x| x.1.to_lowercase());
         Ok(x)
-    });
-    x.map_err(|e| eprintln!("Error in ws_files: {e}"))
+    }).map_err(|e| eprintln!("Error in ws_files: {e}"))
 }
 
 #[command]
 async fn ws_namespaces(state: State<'_, WSLock>) -> Result<Vec<Box<str>>, ()> {
     state.locking(|ws| Ok(ws.namespace_keys())).map_err(|e| eprintln!("Error in ws_namespaces: {e}"))
+}
+
+fn ws_item<T: Send + Sync + 'static>(state: State<'_, WSLock>, id: Id, gfn: Gatherer<T>) -> anyhow::Result<Arc<T>> {
+    state.mods().and_then(|afe| afe.gather_by_id(id, gfn))
 }
 
 #[command]
@@ -152,15 +150,11 @@ async fn ws_name(state: State<'_, WSLock>, id: Id) -> Result<String, ()> {
 
 #[command]
 fn ws_mod_data(state: State<'_, WSLock>, id: Id) -> Option<Arc<loader::ModTypeData>> {
-    state.mods().and_then(|afe| {
-        afe.gather_by_id(id, workspace::gather_mod_data)
-    }).inspect_err(|e| eprintln!("Error in ws_mod_data: {e}")).ok()
+    ws_item(state, id, workspace::gather_mod_data).inspect_err(|e| eprintln!("Error in ws_mod_data: {e}")).ok()
 }
 #[command]
 fn ws_str_index(state: State<'_, WSLock>, id: Id) -> Option<Arc<jvm::StrIndexMapped>> {
-    state.mods().and_then(|afe| {
-        afe.gather_by_id(id, workspace::gather_str_index)
-    }).inspect_err(|e| eprintln!("Error in ws_str_index: {e}")).ok()
+    ws_item(state, id, workspace::gather_str_index).inspect_err(|e| eprintln!("Error in ws_str_index: {e}")).ok()
 }
 #[command]
 fn ws_file_type_sizes(state: State<'_, WSLock>, mode: WSMode) -> Option<Arc<extract::ModFileTypeSizes>> {
@@ -181,8 +175,7 @@ async fn ws_inheritance(state: State<'_, WSLock>, mode: WSMode) -> Result<Arc<ex
     let x = state.mods().and_then(|afe| {
         match mode {
             WSMode::Generic(force) => {
-                afe.gather_with(force, workspace::gather_inheritance)?;
-                let fe = &*afe.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
+                let fe = &*afe.gather_with(force, workspace::gather_inheritance)?;
                 Ok(Arc::new(fe.values().filter_map(workspace::FileInfo::get).collect()))
             }
             WSMode::Specific(id) => afe.gather_by_id(id, workspace::gather_inheritance)
@@ -197,8 +190,7 @@ async fn ws_complexity(state: State<'_, WSLock>, mode: WSMode) -> Result<Arc<jvm
     let x = state.mods().and_then(|afe| {
         match mode {
             WSMode::Generic(force) => {
-                afe.gather_with(force, workspace::gather_complexity)?;
-                let fe = &*afe.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
+                let fe = &*afe.gather_with(force, workspace::gather_complexity)?;
                 Ok(Arc::new(fe.values().filter_map(workspace::FileInfo::get).collect()))
             }
             WSMode::Specific(id) => afe.gather_by_id(id, workspace::gather_complexity)
@@ -213,8 +205,7 @@ async fn ws_tags(state: State<'_, WSLock>, mode: WSMode) -> Result<Arc<extract::
     let x = state.mods().and_then(|afe| {
         match mode {
             WSMode::Generic(force) => {
-                afe.gather_with(force, workspace::gather_tags)?;
-                let fe = &*afe.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
+                let fe = &*afe.gather_with(force, workspace::gather_tags)?;
                 Ok(Arc::new(fe.values().filter_map(workspace::FileInfo::get).collect()))
             }
             WSMode::Specific(id) => afe.gather_by_id(id, workspace::gather_tags)
@@ -229,8 +220,7 @@ async fn ws_recipes(state: State<'_, WSLock>, mode: WSMode) -> Result<Arc<extrac
     let x = state.mods().and_then(|afe| {
         match mode {
             WSMode::Generic(force) => {
-                afe.gather_with(force, workspace::gather_recipes)?;
-                let fe = &*afe.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
+                let fe = &*afe.gather_with(force, workspace::gather_recipes)?;
                 Ok(Arc::new(fe.values().filter_map(workspace::FileInfo::get).collect()))
             }
             WSMode::Specific(id) => afe.gather_by_id(id, workspace::gather_recipes)
@@ -265,7 +255,7 @@ fn main() {
         .manage(workspace::WSLock::new())
         .manage(auth::GithubClient::setup().expect("Failed to setup github client"))
         .invoke_handler(generate_handler![
-            auth, logout, load, mod_dirs, open_workspace, close_workspace, ws_files, ws_namespaces, ws_show, ws_name, ws_mod_data, ws_str_index, ws_file_type_sizes, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries, ws_recipes, ws_mod_playable, dbg_parse_times
+            auth, logout, load, mod_dirs, workspace, ws_files, ws_namespaces, ws_show, ws_name, ws_mod_data, ws_str_index, ws_file_type_sizes, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries, ws_recipes, ws_mod_playable, dbg_parse_times
         ])
         .register_asynchronous_uri_scheme_protocol("raw", |app, req, resp| {
             let now = std::time::Instant::now();
@@ -280,7 +270,7 @@ fn main() {
                         rb.status(500).body(Cow::Borrowed(&[][..]))
                     }
                 }.unwrap());
-                println!("Fetching took {:?} -> {}", now.elapsed(), req.uri().path());
+                println!("Fetched in {:?} -> {}", now.elapsed(), req.uri().path());
             });
         })
         .run(generate_context!())

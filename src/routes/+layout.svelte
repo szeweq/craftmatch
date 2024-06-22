@@ -20,7 +20,7 @@ let authOpen = $state(false)
   <button class="btn-icon" onclick={() => history.back()} disabled={!backEnabled} title="Go back">
     <span class="i-ms-arrow-back"></span>
   </button>
-  {#if ws.open}<button class="btn-icon" onclick={() => invoke("close_workspace").then(() => goto("/"))} title="Close workspace"><span class="i-ms-folder-off"></span></button>{/if}
+  {#if ws.open}<button class="btn-icon" onclick={() => invoke("workspace", {open: false}).then(() => goto("/"))} title="Close workspace"><span class="i-ms-folder-off"></span></button>{/if}
   <div class="grow"></div>
   {#if user.name === ""}
     <button class="btn-icon" onclick={() => authOpen = true} title="Log in"><span class="i-ms-account-circle"></span></button>

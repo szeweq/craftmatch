@@ -11,7 +11,7 @@
   <h1>Welcome!</h1>
   <p>Choose the options:</p>
   <nav>
-    <button onclick={() => invoke<boolean>("open_workspace")}>Open workspace</button>
+    <button onclick={() => invoke<boolean>("workspace", {open: true})}>Open workspace</button>
   </nav>
 </div>
 {#if moddirs.length > 0}

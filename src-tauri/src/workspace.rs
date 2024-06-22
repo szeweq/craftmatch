@@ -1,4 +1,4 @@
-use std::{fs::{self, File}, io::{self, BufReader}, path::{Path, PathBuf}, sync::{Arc, Mutex, RwLock}};
+use std::{fs::{self, File}, io::{self, BufReader}, path::{Path, PathBuf}, sync::{Arc, Mutex, RwLock, RwLockReadGuard}};
 
 use indexmap::IndexMap;
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
@@ -88,17 +88,17 @@ impl DirWS {
 }
 
 pub trait AllGather {
-    fn gather_with<T: Send + Sync + 'static>(&self, force: bool, gfn: Gatherer<T>) -> anyhow::Result<()>;
+    fn gather_with<T: Send + Sync + 'static>(&self, force: bool, gfn: Gatherer<T>) -> anyhow::Result<RwLockReadGuard<'_, IndexMap<Id, FileInfo>>>;
     fn gather_by_id<T: Send + Sync + 'static>(&self, id: Id, gfn: Gatherer<T>) -> anyhow::Result<Arc<T>>;
 }
 impl AllGather for WSFiles {
-    fn gather_with<T: Send + Sync + 'static>(&self, force: bool, gfn: Gatherer<T>) -> anyhow::Result<()> {
+    fn gather_with<T: Send + Sync + 'static>(&self, force: bool, gfn: Gatherer<T>) -> anyhow::Result<RwLockReadGuard<'_, IndexMap<Id, FileInfo>>> {
         self.write().map_err(|_| anyhow::anyhow!("Error in gather_with"))?.par_values_mut().for_each(|file_entry| {
             if let Err(e) = file_entry.gather(gfn, force) {
                 eprintln!("{}: {}", file_entry.path.display(), e);
             }
         });
-        Ok(())
+        self.read().map_err(|_| anyhow::anyhow!("WSFiles read error"))
     }
     fn gather_by_id<T: Send + Sync + 'static>(&self, id: Id, gfn: Gatherer<T>) -> anyhow::Result<Arc<T>> {
         let fe = &mut *self.write().map_err(|_| anyhow::anyhow!("fe write error"))?;
@@ -169,8 +169,7 @@ impl WSMode {
     pub fn gather_from_entries<T: Send + Sync + FromIterator<Arc<T>> + 'static>(self, entries: &WSFiles, gfn: Gatherer<T>) -> anyhow::Result<Arc<T>> {
         match self {
             Self::Generic(force) => {
-                entries.gather_with(force, gfn)?;
-                let fe = &*entries.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
+                let fe = &*entries.gather_with(force, gfn)?;
                 Ok(Arc::new(fe.values().filter_map(FileInfo::get::<T>).collect()))
             }
             Self::Specific(id) => entries.gather_by_id(id, gfn)
