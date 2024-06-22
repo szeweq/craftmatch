@@ -12,7 +12,7 @@ pub(super) struct FabricMetadata {
     version: Box<str>,
     authors: Box<[Box<str>]>,
     description: Option<Box<str>>,
-    license: Option<Box<str>>,
+    license: Option<OneOrMany<Box<str>>>,
     icon: Option<Box<str>>,
     contact: Option<HashMap<Box<str>, Box<str>>>,
     depends: Option<HashMap<Box<str>, Box<str>>>,
@@ -32,7 +32,7 @@ impl Extractor for ExtractFabric {
             version: fm.version.clone(),
             description: fm.description.clone(),
             authors: (!fm.authors.is_empty()).then(|| fm.authors.join(", ").into_boxed_str()),
-            license: fm.license.clone(),
+            license: fm.license.as_ref().map(|x| x.join(", ")),
             logo_path: fm.icon.clone(),
             url: fm.contact.as_ref().and_then(|m| m.get("home").cloned())
         }])
@@ -52,5 +52,19 @@ impl Extractor for ExtractFabric {
             entries.push(jvm::scan_fabric_mod_entry(zipfile, e)?);
         }
         Ok(jvm::ModEntries { classes: entries.into_boxed_slice() })
+    }
+}
+
+#[derive(serde::Deserialize)]
+enum OneOrMany<T> {
+    One(T),
+    Many(Box<[T]>)
+}
+impl OneOrMany<Box<str>> {
+    pub fn join(&self, sep: &str) -> Box<str> {
+        match self {
+            Self::One(x) => x.clone(),
+            Self::Many(xs) => xs.join(sep).into_boxed_str()
+        }
     }
 }
