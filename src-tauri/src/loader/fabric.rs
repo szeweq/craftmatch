@@ -56,6 +56,7 @@ impl Extractor for ExtractFabric {
 }
 
 #[derive(serde::Deserialize)]
+#[serde(untagged)]
 enum OneOrMany<T> {
     One(T),
     Many(Box<[T]>)
