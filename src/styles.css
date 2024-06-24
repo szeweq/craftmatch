@@ -281,11 +281,11 @@ ul {
   background-color: transparent;
 }
 
-th.sort-asc::after {
+.sort-asc::after {
   content: '\2191';
   padding-inline-start: .25rem;
 }
-th.sort-desc::after {
+.sort-desc::after {
   content: '\2193';
   padding-inline-start: .25rem;
 }
