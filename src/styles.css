@@ -1,13 +1,5 @@
 @import url('./styles/root.css');
 
-*, *::before, *::after {
-  box-sizing: border-box;
-}
-
-html, body {
-  margin: 0;
-  padding: 0;
-}
 body {
   display: grid;
   grid-template-areas: 'a m';
@@ -82,7 +74,7 @@ a[href="#"], a[role="button"] {
   color: inherit;
 }
 
-a:not([href="#"]):not([role="button"]):hover {
+a:not([href="#"], [role="button"]):hover {
   color: #24c8db;
 }
 
@@ -160,10 +152,10 @@ button:disabled {
   color: #fff8;
 }
 
-button:not(:disabled):hover, select:not(:disabled):hover, a[role="button"]:hover {
+:is(button, select, a[role="button"]):not(:disabled):hover {
   box-shadow: inset 0 0 0 2px var(--c-ring);
 }
-button:not(:disabled):active, select:not(:disabled):active, a[role="button"]:active {
+:is(button, select, a[role="button"]):not(:disabled):active {
   box-shadow: inset 0 0 0 2px var(--c-ring);
   background-color: rgb(var(--cx1) / .4);
 }

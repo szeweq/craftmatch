@@ -28,12 +28,21 @@
   font-style: normal;
   font-weight: 100 900;
   font-display: swap;
-  src: url("/font/InterVariable.woff2") format("woff2");
+  src: local("Inter"), url("/font/InterVariable.woff2") format("woff2");
 }
 @font-face {
   font-family: Inter;
   font-style: italic;
   font-weight: 100 900;
   font-display: swap;
-  src: url("/font/InterVariable-Italic.woff2") format("woff2");
+  src: local("Inter"), url("/font/InterVariable-Italic.woff2") format("woff2");
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
 }
