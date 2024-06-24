@@ -1,5 +1,6 @@
 <script lang="ts">
   import FilesList from "$lib/FilesList.svelte"
+    import SortBtn from "$lib/SortBtn.svelte";
   import Welcome from "$lib/Welcome.svelte"
   import { useUnitFmt } from "$lib/intl.svelte"
   import { ws } from "$lib/workspace.svelte"
@@ -9,7 +10,7 @@
   let fileQuery = $state("")
   let qlen = $state(0)
   let kbfmt = useUnitFmt('kilobyte')
-  let sortSize = $state(false)
+  let sortSize = $state(0)
   let lastSelected = $state<FileID | null>(null)
   let menupos = $state<[number, number]>([0, 0])
   let activePopover = $state<HTMLElement | null>(null)
@@ -50,10 +51,7 @@
       <input type="text" bind:value={fileQuery} placeholder="Search files...">
       <span>{qlen}/{ws.files.length}</span>
     </label>
-    <label>
-      <input type="checkbox" bind:checked={sortSize} />
-      <span>Sort by size</span>
-    </label>
+    <SortBtn label="Sort by size" bind:sort={sortSize} />
   </section>
   <FilesList class="text-sm b-2 b-solid b-white/40 rounded-md list-none mx-0 my-2 text-truncate" q={fileQuery} sortSize={sortSize} bind:qlen>
     {#snippet item(id, f, n)}
