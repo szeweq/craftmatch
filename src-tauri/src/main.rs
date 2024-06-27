@@ -50,18 +50,6 @@ async fn logout(app: tauri::AppHandle, state: State<'_, auth::GithubClient>) -> 
 }
 
 #[command]
-async fn load(app: tauri::AppHandle, state: State<'_, WSLock>) -> Result<(), ()> {
-    state.clone().locking(|ws| {
-        if ws.is_empty() {
-            if let Err(e) = app.emit("ws-open", true) {
-                eprintln!("Opening workspace error: {e}");
-            }
-        }
-        Ok(())
-    }).map_err(|e| eprintln!("Error in load: {e}"))
-}
-
-#[command]
 async fn mod_dirs(app: tauri::AppHandle, state: State<'_, WSLock>, kind: imp::ReqModDirs) -> Result<imp::RespModDirs, ()> {
     match kind {
         imp::ReqModDirs::List => {
@@ -254,8 +242,23 @@ fn main() {
     tauri::Builder::default()
         .manage(workspace::WSLock::new())
         .manage(auth::GithubClient::setup().expect("Failed to setup github client"))
+        .setup(|app| {
+            let wapp = app.handle().clone();
+            app.listen("load", move |_| {
+                let ws = wapp.state::<WSLock>().inner().clone();
+                if let Err(e) = ws.locking(|ws| {
+                    if ws.is_empty() {
+                        if let Err(e) = wapp.emit("ws-open", true) {
+                            eprintln!("Opening workspace error: {e}");
+                        }
+                    }
+                    Ok(())
+                }) { eprintln!("Error in load: {e}"); }
+            });
+            Ok(())
+        })
         .invoke_handler(generate_handler![
-            auth, logout, load, mod_dirs, workspace, ws_files, ws_namespaces, ws_show, ws_name, ws_mod_data, ws_str_index, ws_file_type_sizes, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries, ws_recipes, ws_mod_playable, dbg_parse_times
+            auth, logout, mod_dirs, workspace, ws_files, ws_namespaces, ws_show, ws_name, ws_mod_data, ws_str_index, ws_file_type_sizes, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries, ws_recipes, ws_mod_playable, dbg_parse_times
         ])
         .register_asynchronous_uri_scheme_protocol("raw", |app, req, resp| {
             let now = std::time::Instant::now();

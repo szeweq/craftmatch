@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core"
-import { listen } from "@tauri-apps/api/event"
+import { emit, listen } from "@tauri-apps/api/event"
 
 type Files = [FileID, string, number][]
 function wsFiles(f: (n: Files) => void) {
@@ -17,7 +17,7 @@ listen("ws-open", e => {
   wsOpen = !!e.payload
   if (o != wsOpen) loadState = 0
   if (!wsOpen) files = []
-}).then(() => invoke("load"))
+}).then(() => emit("load"))
 
 export const ws = {
   get isOpen() { return wsOpen },
