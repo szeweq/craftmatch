@@ -33,44 +33,19 @@ aside {
   padding: .25rem;
   gap: .25rem;
 }
-aside > .opts {
-  flex: 1 0 auto;
-}
-aside > .files {
-  overflow: auto;
-}
-aside > .files a {
-  font-weight: 400;
-  color: inherit;
-}
-
 main {
   grid-area: m;
   max-height: 100dvh;
   overflow: auto;
   padding-inline: 0.5rem;
 }
-
 footer {
   grid-area: f;
   background-color: var(--c-bg2);
   line-height: 1;
   font-size: .75rem;
   padding: 0 .25rem;
-}
-
-.container {
-  margin: 0;
-  padding-top: 10vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  text-align: center;
-}
-
-.row {
-  display: flex;
-  justify-content: center;
+  text-wrap: nowrap;
 }
 
 a {
@@ -149,14 +124,6 @@ button.btn-icon {
 .btn-icon:empty::before {
   content: '';
   display: block;
-}
-
-button.btn-plus {
-  line-height: 1;
-  display: inline-block;
-  width: 2rem;
-  height: 2rem;
-  padding: 0.25rem;
 }
 
 [hidden] {
