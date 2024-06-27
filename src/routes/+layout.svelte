@@ -30,5 +30,6 @@ const closeDialog = () => openDialog = 0
   {@render children()}
   <Loading />
 </main>
+<footer>...</footer>
 <SettingsModal open={openDialog === 1} onclose={closeDialog}/>
 <AuthModal open={openDialog === 2} onclose={closeDialog} />
