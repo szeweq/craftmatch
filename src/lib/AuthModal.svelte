@@ -1,6 +1,6 @@
 <script lang="ts">
   import { doAuth } from "./auth.svelte";
-  let {open = $bindable(), onclose}: {open: boolean, onclose?: () => void} = $props()
+  let {open, onclose}: {open: boolean, onclose?: () => void} = $props()
   let dialog: HTMLDialogElement = $state()
   $effect.pre(() => {
     if (dialog) {

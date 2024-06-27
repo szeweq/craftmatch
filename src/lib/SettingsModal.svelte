@@ -1,7 +1,7 @@
 <script lang="ts">
   import { settings } from "./settings.svelte"
   import { currentLang } from "./intl.svelte"
-  let {open = $bindable(), onclose}: {open: boolean, onclose?: () => void} = $props()
+  let {open, onclose}: {open: boolean, onclose?: () => void} = $props()
   let dialog: HTMLDialogElement = $state()
   $effect.pre(() => {
     if (dialog) {
