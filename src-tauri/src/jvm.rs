@@ -1,6 +1,6 @@
-use std::{collections::HashMap, io::{Read, Seek}, sync::Mutex, time};
+use std::{borrow::Cow, collections::HashMap, io::{Read, Seek}, sync::Mutex, time};
 
-use cafebabe::attributes::{AnnotationElement, AnnotationElementValue, AttributeData};
+use cafebabe::{attributes::{AnnotationElement, AnnotationElementValue, AttributeData}, descriptor::{FieldType, Ty}};
 use once_cell::sync::Lazy;
 use serde::Serialize;
 use zip::ZipArchive;
@@ -127,12 +127,13 @@ pub fn gather_complexity<RS: Read + Seek>(mut zar: ZipArchive<RS>) -> anyhow::Re
 }
 
 fn find_annotation<'a>(cf: &'a cafebabe::ClassFile<'a>, name: &'a str) -> Option<&'a cafebabe::attributes::Annotation<'a>> {
+    let typedesc = FieldType::Ty(Ty::Object(Cow::Borrowed(name)));
     cf.attributes.iter().find_map(|a| {
         match &a.data {
             AttributeData::RuntimeVisibleAnnotations(van) |
             AttributeData::RuntimeInvisibleAnnotations(van) => van,
             _ => { return None }
-        }.iter().find(|an| an.type_descriptor == name)
+        }.iter().find(|an| an.type_descriptor == typedesc)
     })
 }
 

@@ -20,7 +20,7 @@ toml = {version = "0.8", default-features = false, features = ["parse"] }
 anyhow = "1.0"
 base64 = "0.22"
 rayon = "1.10"
-cafebabe = "0.6.1"
+cafebabe = "0.7"
 state = "0.6"
 uuid = {version = "1.8", features = ["v7"] }
 byteorder = "1.5"

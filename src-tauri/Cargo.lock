@@ -419,9 +419,9 @@ dependencies = [
 
 [[package]]
 name = "cafebabe"
-version = "0.6.1"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3cb5eea41dce128eb8257a90648a2392b0ec58a4bc9fcfa5d97e3e79abc7c020"
+checksum = "28d6bceedbf379f6901853043828f318875bce2cef501b832cea2d598920241b"
 dependencies = [
  "bitflags 1.3.2",
  "cesu8",
