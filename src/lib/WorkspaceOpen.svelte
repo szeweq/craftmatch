@@ -57,7 +57,7 @@
 </div>
 <h2>Files</h2>
 <section class="sticky top-0 rounded-md b-solid b-white/40 b-2 bgvar-c-bg1 p-1 z-1">
-  <QInput {...queryFiles} placeholder="Search files" />
+  <QInput {...queryFiles} id="ws-files-q" placeholder="Search files" />
   <SortBtn label="Sort by size" bind:sort={sortFiles.sortID} />
 </section>
 <ul class="text-sm b-2 b-solid b-white/40 rounded-md list-none mx-0 my-2 text-truncate">
