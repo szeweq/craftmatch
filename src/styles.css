@@ -50,11 +50,8 @@ footer {
 
 a {
   font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a[href="#"], a[role="button"] {
   color: inherit;
+  text-decoration: inherit;
 }
 
 a:not([href="#"], [role="button"]):hover {
