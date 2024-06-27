@@ -2,13 +2,11 @@
   import Paginator from '$lib/Paginator.svelte'
   import QInput from '$lib/QInput.svelte'
     import SortBtn from '$lib/SortBtn.svelte'
-  import { sortBy } from '$lib/query'
-  import { queryable, paginate } from '$lib/data.svelte'
+  import { queryable, paginate, sortable } from '$lib/data.svelte'
   let {data}: { data: import('./$types').PageData } = $props()
   let q = queryable(() => data.indices, x => x[0])
-  let sortCount = $state(0)
-  let sorted = $derived(sortBy(q.queried, sortCount && (([,j]) => data.inherits[j].length), sortCount > 1))
-  let pag = paginate(() => sorted)
+  let sb = sortable(() => q.queried, ([,j]) => data.inherits[j].length)
+  let pag = paginate(() => sb.sorted)
   let selected = $state(-1)
   let selObj = $derived.by(() => ({
     str: selected >= 0 ? data.indices.find(([,i]) => i == selected)![0] : "",
@@ -21,7 +19,7 @@
 </script>
 <div>
   <QInput {...q} />
-  <SortBtn label="Sort by count" bind:sort={sortCount} />
+  <SortBtn label="Sort by count" bind:sort={sb.sortID} />
 </div>
 <Paginator {pag} />
 <ul class="text-xs">
