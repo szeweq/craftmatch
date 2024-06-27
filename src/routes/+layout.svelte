@@ -11,26 +11,24 @@ import { user } from "$lib/auth.svelte"
 let {children} = $props()
 let backEnabled = $state(false)
 $effect.pre(() => page.subscribe(p => backEnabled = p.url.pathname !== "/"))
-let settingsOpen = $state(false)
-let authOpen = $state(false)
+let openDialog = $state(0)
+const closeDialog = () => openDialog = 0
 </script>
 <svelte:document onerror={e => console.log(e)} />
 <aside>
-  <button class="btn-icon" onclick={() => history.back()} disabled={!backEnabled} title="Go back">
-    <span class="i-ms-arrow-back"></span>
-  </button>
+  <button class="btn-icon before:i-ms-arrow-back" onclick={() => history.back()} disabled={!backEnabled} title="Go back"></button>
   {#if ws.isOpen}<button class="btn-icon" onclick={() => ws.close().then(() => goto("/"))} title="Close workspace"><span class="i-ms-folder-off"></span></button>{/if}
   <div class="grow"></div>
   {#if user.name === ""}
-    <button class="btn-icon" onclick={() => authOpen = true} title="Log in"><span class="i-ms-account-circle"></span></button>
+    <button class="btn-icon before:i-ms-account-circle" onclick={() => openDialog = 2} title="Log in"></button>
   {:else}
     <button class="btn-icon" onclick={() => {}} title="Log out"><img src={user.avatar} alt={user.name} class="rounded-full" width="32" height="32"/></button>
   {/if}
-  <button class="btn-icon" onclick={() => settingsOpen = true} title="Settings"><span class="i-ms-settings"></span></button>
+  <button class="btn-icon before:i-ms-settings" onclick={() => openDialog = 1} title="Settings"></button>
 </aside>
 <main>
   {@render children()}
   <Loading />
 </main>
-<SettingsModal open={settingsOpen} onclose={() => settingsOpen = false}/>
-<AuthModal open={authOpen} onclose={() => authOpen = false} />
+<SettingsModal open={openDialog === 1} onclose={closeDialog}/>
+<AuthModal open={openDialog === 2} onclose={closeDialog} />

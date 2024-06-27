@@ -167,15 +167,13 @@ button.btn-icon {
   padding: 0.25rem;
   font-size: 1rem;
   line-height: 1;
-} 
-.btn-icon:empty::before {
-  content: '';
-  display: inline-block;
-}
-.btn-icon:not(:empty) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+.btn-icon:empty::before {
+  content: '';
+  display: block;
 }
 
 a.tab-close {
