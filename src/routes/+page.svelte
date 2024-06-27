@@ -1,5 +1,6 @@
 <script lang="ts">
   import FilesList from "$lib/FilesList.svelte"
+    import QInput from "$lib/QInput.svelte";
   import SortBtn from "$lib/SortBtn.svelte";
   import Welcome from "$lib/Welcome.svelte"
   import { useUnitFmt } from "$lib/intl.svelte"
@@ -9,6 +10,7 @@
 
   let fileQuery = $state("")
   let qlen = $state(0)
+  let queried = $derived(Array.from({length: qlen}))
   let kbfmt = useUnitFmt('kilobyte')
   let sortSize = $state(0)
   let lastSelected = $state<FileID | null>(null)
@@ -47,10 +49,7 @@
   </div>
   <h2>Files</h2>
   <section class="sticky top-0 rounded-md b-solid b-white/40 b-2 bgvar-c-bg1 p-1 z-1">
-    <label class="input-group">
-      <input type="text" bind:value={fileQuery} placeholder="Search files...">
-      <span>{qlen}/{ws.files.length}</span>
-    </label>
+    <QInput bind:q={fileQuery} queried={queried} source={ws.files} placeholder="Search files" />
     <SortBtn label="Sort by size" bind:sort={sortSize} />
   </section>
   <FilesList class="text-sm b-2 b-solid b-white/40 rounded-md list-none mx-0 my-2 text-truncate" q={fileQuery} sortSize={sortSize} bind:qlen>

@@ -21,7 +21,7 @@
   })
 </script>
 <div>
-  <QInput {q} />
+  <QInput {...q} />
   <SortBtn label="Sort by count" bind:sort={sortCount} />
 </div>
 <Paginator {pag} />

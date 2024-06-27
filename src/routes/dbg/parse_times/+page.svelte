@@ -15,7 +15,7 @@
 </script>
 <h1>Debug – parsing times</h1>
 <section class="sticky top-0 rounded-md b-solid b-white/40 b-2 bgvar-c-bg1 p-1">
-  <QInput {q} />
+  <QInput {...q} />
   <input id="sortCount" type="checkbox" bind:checked={sortCount} />
   <label for="sortCount">Sort by time</label>
   <Paginator {pag} />
