@@ -2,15 +2,13 @@
   import QInput from "$lib/QInput.svelte"
   import SortBtn from "$lib/SortBtn.svelte"
   import { useUnitFmt } from "$lib/intl.svelte"
-  import { sortBy } from "$lib/query"
-  import { queryable } from "$lib/data.svelte"
+  import { queryable, sortable } from "$lib/data.svelte"
   import { ws } from "$lib/workspace.svelte"
   import { invokeWS } from "$lib/ws"
   import type { ToggleEventHandler } from "svelte/elements"
 
   let queryFiles = queryable(() => ws.files, x => x[1])
-  let sortSize = $state(0)
-  let sorted = $derived(sortBy(queryFiles.queried, sortSize && (x => x[2]), sortSize > 1))
+  let sortFiles = sortable(() => queryFiles.queried, x => x[2])
   let kbfmt = useUnitFmt('kilobyte')
   let lastSelected = $state<FileID | null>(null)
   let menupos = $state<[number, number]>([0, 0])
@@ -60,10 +58,10 @@
 <h2>Files</h2>
 <section class="sticky top-0 rounded-md b-solid b-white/40 b-2 bgvar-c-bg1 p-1 z-1">
   <QInput {...queryFiles} placeholder="Search files" />
-  <SortBtn label="Sort by size" bind:sort={sortSize} />
+  <SortBtn label="Sort by size" bind:sort={sortFiles.sortID} />
 </section>
 <ul class="text-sm b-2 b-solid b-white/40 rounded-md list-none mx-0 my-2 text-truncate">
-  {#each sorted as [id, f, n] (id)}
+  {#each sortFiles as [id, f, n] (id)}
     <li class="f hover:bg-white/20 justify-between gap-1 px-1 items-center">
       <a class="flex-1 block c-inherit hover:c-inherit! p-1" href={`/jar/${id}`}>
         <div>{f}</div>

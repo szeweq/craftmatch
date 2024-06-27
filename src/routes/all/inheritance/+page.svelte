@@ -25,7 +25,7 @@
 </div>
 <Paginator {pag} />
 <ul class="text-xs">
-  {#each pag.chunk as [s, i] (i)}
+  {#each pag as [s, i] (i)}
     <li><a href="#" onclick={() => selected = i}>{s} ({data.inherits[i].length} inherited classes)</a></li>
   {/each}
 </ul>
