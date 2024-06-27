@@ -3,8 +3,4 @@
   import WorkspaceOpen from "$lib/WorkspaceOpen.svelte"
   import { ws } from "$lib/workspace.svelte"
 </script>
-{#if !ws.isOpen}
-  <Welcome />
-{:else}
-  <WorkspaceOpen />
-{/if}
+<svelte:component this={ws.isOpen ? WorkspaceOpen : Welcome} />
