@@ -1,5 +1,5 @@
 <script lang="ts" generics="T">
-  import type { Queryable } from "./queryable.svelte";
+  import type { Queryable } from "./data.svelte";
   let {q = $bindable(), queried, source, placeholder = ""}: Queryable<T> & {placeholder?: string} = $props()
 </script>
 <label class="input-group">

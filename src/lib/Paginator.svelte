@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Paginate } from "./paginate.svelte";
+  import type { Paginate } from "./data.svelte";
 
   let {pag}: {pag: Paginate<any>} = $props()
   let around = $derived.by(() => Array.from({length: pag.all}, (_, i) => i).filter(i => i >= pag.current - 4 && i <= pag.current + 4))

@@ -2,9 +2,8 @@
   import Paginator from '$lib/Paginator.svelte'
   import QInput from '$lib/QInput.svelte'
   import { useUnitFmt } from '$lib/intl.svelte'
-  import { paginate } from '$lib/paginate.svelte'
   import { sortBy } from '$lib/query'
-  import { queryable } from '$lib/queryable.svelte'
+  import { queryable, paginate } from '$lib/data.svelte'
   let {data}: { data: import('./$types').PageData } = $props()
   let oe = $derived(Object.entries(data))
   let q = queryable(() => oe, x => x[0])

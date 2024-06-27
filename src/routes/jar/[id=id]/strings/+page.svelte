@@ -1,10 +1,9 @@
 <script lang="ts">
   import Paginator from '$lib/Paginator.svelte'
   import QInput from '$lib/QInput.svelte'
-    import SortBtn from '$lib/SortBtn.svelte';
-  import { paginate } from '$lib/paginate.svelte'
+    import SortBtn from '$lib/SortBtn.svelte'
   import { sortBy } from '$lib/query'
-  import { queryable } from '$lib/queryable.svelte'
+  import { queryable, paginate } from '$lib/data.svelte'
   let {data}: { data: import('./$types').PageData } = $props()
   let q = queryable(() => data?.strings ?? [], x => x[0])
   let sortCount = $state(0)
