@@ -1,9 +1,7 @@
-import { wsName } from "$lib/ws";
+import { invokeWS } from "$lib/ws"
 
 export async function load({ params }) {
-    const name = await wsName(params.id as FileID)
-    return {
-        id: params.id as FileID,
-        name
-    };
+  const id = params.id as FileID
+  const name = await invokeWS('ws_name', {id})
+  return {id, name};
 }

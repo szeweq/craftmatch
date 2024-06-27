@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { wsShow } from '$lib/ws';
+  import { invokeWS } from '$lib/ws';
   import { convertFileSrc } from '@tauri-apps/api/core'
 
   const versionRegexp = /^(\d+)(\.(\d+)(\.(\d+))?)?/
@@ -10,7 +10,7 @@
 </script>
 <h1>File: {data.name}</h1>
 <nav class="actions py-1">
-  <button onclick={() => wsShow(data.id)}>Show</button>
+  <button onclick={() => invokeWS('ws_show', {id: data.id})}>Show</button>
   <a role="button" href="/jar/{data.id}/strings">Strings</a>
   <a role="button" href="/jar/{data.id}/sizes">Sizes</a>
   <a role="button" href="/jar/{data.id}/filetypes">File types</a>

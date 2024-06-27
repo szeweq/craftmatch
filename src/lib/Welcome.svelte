@@ -1,5 +1,6 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core"
+  import { ws } from "./workspace.svelte"
   let moddirs = $state<string[]>([])
   $effect.pre(() => {
     invoke<string[]>("mod_dirs", {kind: null}).then(x => {
@@ -11,7 +12,7 @@
   <h1>Welcome!</h1>
   <p>Choose the options:</p>
   <nav>
-    <button onclick={() => invoke<boolean>("workspace", {open: true})}>Open workspace</button>
+    <button onclick={ws.open}>Open workspace</button>
   </nav>
 </div>
 {#if moddirs.length > 0}

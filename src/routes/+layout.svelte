@@ -5,10 +5,9 @@ import { page } from "$app/stores"
 import { ws } from "$lib/workspace.svelte"
 import Loading from "$lib/Loading.svelte"
 import SettingsModal from "$lib/SettingsModal.svelte"
-import { invoke } from "@tauri-apps/api/core"
 import { goto } from "$app/navigation"
-    import AuthModal from "$lib/AuthModal.svelte";
-    import { user } from "$lib/auth.svelte";
+import AuthModal from "$lib/AuthModal.svelte"
+import { user } from "$lib/auth.svelte"
 let {children} = $props()
 let backEnabled = $state(false)
 $effect.pre(() => page.subscribe(p => backEnabled = p.url.pathname !== "/"))
@@ -20,7 +19,7 @@ let authOpen = $state(false)
   <button class="btn-icon" onclick={() => history.back()} disabled={!backEnabled} title="Go back">
     <span class="i-ms-arrow-back"></span>
   </button>
-  {#if ws.open}<button class="btn-icon" onclick={() => invoke("workspace", {open: false}).then(() => goto("/"))} title="Close workspace"><span class="i-ms-folder-off"></span></button>{/if}
+  {#if ws.isOpen}<button class="btn-icon" onclick={() => ws.close().then(() => goto("/"))} title="Close workspace"><span class="i-ms-folder-off"></span></button>{/if}
   <div class="grow"></div>
   {#if user.name === ""}
     <button class="btn-icon" onclick={() => authOpen = true} title="Log in"><span class="i-ms-account-circle"></span></button>

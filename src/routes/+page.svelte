@@ -1,10 +1,10 @@
 <script lang="ts">
   import FilesList from "$lib/FilesList.svelte"
-    import SortBtn from "$lib/SortBtn.svelte";
+  import SortBtn from "$lib/SortBtn.svelte";
   import Welcome from "$lib/Welcome.svelte"
   import { useUnitFmt } from "$lib/intl.svelte"
   import { ws } from "$lib/workspace.svelte"
-  import { wsShow } from "$lib/ws"
+  import { invokeWS } from "$lib/ws"
   import type { ToggleEventHandler } from "svelte/elements"
 
   let fileQuery = $state("")
@@ -31,7 +31,7 @@
     }
   }
 </script>
-{#if !ws.open}
+{#if !ws.isOpen}
   <Welcome />
 {:else}
   <h1>Workspace opened</h1>
@@ -60,7 +60,7 @@
           <div>{f}</div>
           <div class="text-xs">{kbfmt(n / 1024)}</div>
         </a>
-        <button class="btn-icon" onclick={() => wsShow(id)}><span class="i-ms-open-in-new"></span></button>
+        <button class="btn-icon" onclick={() => invokeWS('ws_show', {id})}><span class="i-ms-open-in-new"></span></button>
         <button class="btn-icon" popovertarget="file-opts" onclick={e => showMenu(e.currentTarget, id)}><span class="i-ms-more-vert"></span></button>
       </li>
     {/snippet}

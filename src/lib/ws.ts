@@ -1,5 +1,14 @@
 import { invoke } from "@tauri-apps/api/core"
-import { listen } from "@tauri-apps/api/event"
+
+type InvokeAPI = {
+  workspace: [{open: boolean}, undefined],
+  ws_show: [{id: FileID}, boolean],
+  ws_name: [{id: FileID}, string],
+  ws_mod_data: [{id: FileID}, ModData | null],
+  ws_mod_playable: [{id: FileID}, string[] | null],
+  ws_str_index: [{id: FileID}, StrIndex | null],
+  ws_mod_entries: [{id: FileID}, {}],
+}
 
 export type Inheritance = {
   indices: [string, number][],
@@ -26,22 +35,16 @@ export type StrIndex = {
 }
 export type ContentTypes = 'meta' | 'classes' | 'assets' | 'data' | 'other'
 
+export function invokeWS(cmd: keyof InvokeAPI, args?: InvokeAPI[typeof cmd][0]) {
+  return invoke<InvokeAPI[typeof cmd][1]>(cmd, args)
+}
+
 function invokeWithMode<T>(cmd: string) {
   return (forceOrId: boolean | FileID) => invoke<T | null>(cmd, {
     mode: forceOrId
   })
 }
 
-export async function openWorkspace() {
-  return await invoke<boolean>('open_workspace')
-}
-
-export async function wsShow(id: FileID) {
-  return await invoke<boolean>('ws_show', {id})
-}
-export async function wsName(id: FileID) {
-  return await invoke<string>('ws_name', {id})
-}
 export async function wsModData(id: FileID) {
   return await invoke<(ModData | null)>('ws_mod_data', {id})
 }
@@ -60,14 +63,3 @@ export const wsInheritance = invokeWithMode<Inheritance>('ws_inheritance')
 export const wsComplexity = invokeWithMode<Complexity>('ws_complexity')
 export const wsTags = invokeWithMode<Tags>('ws_tags')
 export const wsRecipes = invokeWithMode<Record<string, string[]>>('ws_recipes')
-
-
-function invokeAndListen<T>(cmd: string, event: string) {
-  return (f: (n: T) => void) => {
-    invoke<T>(cmd, {force: false}).then(f)
-    let p = listen<T>(event, e => f(e.payload))
-    return () => p.then(f => f())
-  }
-}
-
-export const wsFiles = invokeAndListen<[FileID, string, number][]>('ws_files', 'ws-files')
