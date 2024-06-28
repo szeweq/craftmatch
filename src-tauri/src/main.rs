@@ -264,7 +264,7 @@ fn main() {
             let now = std::time::Instant::now();
             let ws = app.state::<WSLock>().inner().clone();
             rt::spawn(async move {
-                let rb = Response::builder();
+                let rb = Response::builder().header("Access-Control-Allow-Origin", "*");
                 resp.respond(match get_raw(&ws, req.uri().path()) {
                     Some(Ok(data)) => rb.header("Content-Length", data.len()).body(Cow::Owned(data)),
                     None => rb.status(404).body(Cow::Borrowed(&[][..])),
