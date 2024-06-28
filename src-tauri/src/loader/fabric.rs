@@ -17,7 +17,7 @@ pub(super) struct FabricMetadata {
     contact: Option<HashMap<Box<str>, Box<str>>>,
     depends: Option<HashMap<Box<str>, Box<str>>>,
     suggests: Option<HashMap<Box<str>, Box<str>>>,
-    entrypoints: Option<HashMap<Box<str>, Box<[Box<str>]>>>
+    entrypoints: Option<HashMap<Box<str>, Box<[Entrypoints]>>>
 }
 
 pub struct ExtractFabric(pub(super) FabricMetadata);
@@ -49,7 +49,7 @@ impl Extractor for ExtractFabric {
         };
         let mep = entrypoints.get("main")
             .ok_or_else(|| anyhow!("No entrypoints in fabric.mod.json"))?
-            .iter().cloned().collect::<Box<_>>();
+            .iter().map(Entrypoints::str).collect::<Box<_>>();
         let mut entries = Vec::with_capacity(mep.len());
         for e in mep.iter() {
             entries.push(jvm::scan_fabric_mod_entry(zipfile, e)?);
@@ -84,6 +84,21 @@ impl Authors {
         match self {
             Self::String(x) => x,
             Self::Object { name } => name
+        }
+    }
+}
+
+#[derive(serde::Deserialize)]
+#[serde(untagged)]
+enum Entrypoints {
+    String(Box<str>),
+    Object{ value: Box<str> }
+}
+impl Entrypoints {
+    const fn str(&self) -> &str {
+        match self {
+            Self::String(x) => x,
+            Self::Object { value } => value
         }
     }
 }
