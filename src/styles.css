@@ -213,3 +213,18 @@ ul {
   content: '\2193';
   padding-inline-start: .25rem;
 }
+
+main .attop {
+  --top-bg: transparent;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: -1;
+  pointer-events: none;
+  min-height: 8rem;
+  height: 100vh;
+  mask: radial-gradient(circle at 125% 125%, #000, transparent);
+  background-color: var(--top-bg);
+  transition: background-color 1s;
+}
