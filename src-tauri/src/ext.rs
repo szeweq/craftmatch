@@ -60,9 +60,12 @@ impl Extension {
     }
 }
 
+#[inline]
 pub fn zip_file_iter<RS: Read + Seek>(z: &mut ZipArchive<RS>) -> ZipFileIter<RS, fn(&str) -> bool> {
     ZipFileIter(0, z, |_| true)
 }
+
+#[inline]
 pub fn zip_file_ext_iter<RS: Read + Seek>(z: &mut ZipArchive<RS>, ext: Extension) -> ZipFileIter<RS, impl Fn(&str) -> bool> {
     ZipFileIter(0, z, move |name| ext.matches(name))
 }
@@ -71,20 +74,26 @@ pub fn zip_file_ext_iter<RS: Read + Seek>(z: &mut ZipArchive<RS>, ext: Extension
 // }
 
 pub struct ZipFileIter<'a, RS: Read + Seek, F: Fn(&str) -> bool>(usize, &'a mut ZipArchive<RS>, F);
+impl <'a, RS: Read + Seek, F: Fn(&str) -> bool> ZipFileIter<'a, RS, F> {
+    fn next_index(&mut self) -> Option<usize> {
+        Some(loop {
+            let i = self.0;
+            let name = self.1.name_for_index(i)?;
+            self.0 += 1;
+            if !is_zip_dir(name) && self.2(name) {
+                break i
+            }
+        })
+    }
+}
 impl <'a, RS: Read + Seek, F: Fn(&str) -> bool> Iterator for ZipFileIter<'a, RS, F> {
     type Item = ZipResult<ZipFile<'a>>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        let x = loop {
-            let azip: &'a mut ZipArchive<RS> = unsafe { std::mem::transmute(&mut *self.1) };
-            let i = self.0;
-            let name = azip.name_for_index(i)?;
-            self.0 += 1;
-            if !is_zip_dir(name) && self.2(name) {
-                break azip.by_index(i)
-            }
-        };
+        let i = self.next_index()?;
+        let azip: &'a mut ZipArchive<RS> = unsafe { std::mem::transmute(&mut *self.1) };
+        let x = azip.by_index(i);
         if matches!(x, Err(ZipError::FileNotFound)) { None } else { Some(x) }
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
