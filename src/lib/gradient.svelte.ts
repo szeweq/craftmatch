@@ -41,10 +41,6 @@ const hsl2rgb = (h: number, s: number, l: number) => {
   })
   return [r * 255, g * 255, b * 255]
 }
-const relighten = (r: number, g: number, b: number, l: number) => {
-  const [h, s, _] = rgb2hsl(r, g, b)
-  return hsl2rgb(h, s, l)
-}
 const findColors = (d: Uint8ClampedArray) => {
   console.time("fc")
   const gap = 40, cols = new Map<string, number>
@@ -52,7 +48,7 @@ const findColors = (d: Uint8ClampedArray) => {
     let [r, g, b] = d.subarray(i, i + 3);
     const [h, s, l] = rgb2hsl(r, g, b)
     if (s < 0.2) continue
-    [r, g, b] = relighten(r, g, b, Math.min(Math.max(grayscale(r, g, b), 48), 64) / 255)
+    [r, g, b] = hsl2rgb(h, s, Math.min(Math.max(grayscale(r, g, b), 48), 64) / 255)
     let c = '#' + hex(r) + hex(g) + hex(b)
     cols.set(c, (cols.get(c) ?? 0) + 1)
   }
