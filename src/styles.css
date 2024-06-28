@@ -224,7 +224,7 @@ main .attop {
   pointer-events: none;
   min-height: 8rem;
   height: 100vh;
-  mask: radial-gradient(circle at 125% 125%, #000, transparent);
+  mask: radial-gradient(circle at 0 0, #0000 25%, #0008 100%);
   background-color: var(--top-bg);
   transition: background-color 1s;
 }
