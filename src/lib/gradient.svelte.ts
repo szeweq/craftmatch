@@ -1,4 +1,3 @@
-
 const imgData = (src: string) => new Promise<Uint8ClampedArray>((ok, err) => {
   const c = document.createElement("canvas"), ctx = c.getContext("2d"), img = new Image
   img.onload = () => {
@@ -41,20 +40,28 @@ const hsl2rgb = (h: number, s: number, l: number) => {
   })
   return [r * 255, g * 255, b * 255]
 }
-const findColors = (d: Uint8ClampedArray) => {
+const findColor = (d: Uint8ClampedArray) => {
   console.time("fc")
   const gap = 40, cols = new Map<string, number>
   for (let i = 0; i < d.length; i += gap) {
     let [r, g, b] = d.subarray(i, i + 3);
-    const [h, s, l] = rgb2hsl(r, g, b)
+    const [h, s] = rgb2hsl(r, g, b)
     if (s < 0.2) continue
     [r, g, b] = hsl2rgb(h, s, Math.min(Math.max(grayscale(r, g, b), 48), 64) / 255)
-    let c = '#' + hex(r) + hex(g) + hex(b)
+    const c = hex(r) + hex(g) + hex(b)
+
     cols.set(c, (cols.get(c) ?? 0) + 1)
   }
-  const z = [...cols.entries()].sort((a, b) => b[1] - a[1]).map(x => x[0]).slice(0, 4)
+  let col = "none", cnum = 0
+  for (const [c, n] of cols) {
+    if (n > cnum) {
+      col = c
+      cnum = n
+    }
+  }
+  //const z = [...cols.entries()].sort((a, b) => b[1] - a[1]).map(x => '#' + x[0]).slice(0, 4)
   console.timeEnd("fc")
-  return z
+  return '#' + col
 }
 
 export function mainColors(src: () => string) {
@@ -64,7 +71,7 @@ export function mainColors(src: () => string) {
     get bg() {return bg},
     compute() {
       const s = src()
-      s && imgData(s).then(d => bg = findColors(d)?.[0] ?? 'none')
+      s && imgData(s).then(d => bg = findColor(d))
     }
   }
 }

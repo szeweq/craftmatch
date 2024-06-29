@@ -224,7 +224,7 @@ main .attop {
   pointer-events: none;
   min-height: 8rem;
   height: 100vh;
-  mask: radial-gradient(circle at 0 0, #0000 25%, #0008 100%);
+  mask: conic-gradient(from -0.25turn at 100% 0, #fff 50%, #000) luminance;
   background-color: var(--top-bg);
   transition: background-color 1s;
 }
