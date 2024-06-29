@@ -1,7 +1,11 @@
 
-export function queryable<T>(source: () => T[], by: (x: T) => string) {
+type Source<S> = (() => S) | {readonly out: S}
+const canon = <S>(s: Source<S>) => typeof s === "function" ? s : () => s.out
+
+export function queryable<T>(source: Source<T[]>, by: (x: T) => string) {
+  source = canon(source)
   let q = $state("")
-  let queried = $derived.by(() => {
+  let out = $derived.by(() => {
     const t = source(), qq = q.toLowerCase()
     return qq ? t.filter(x => by(x).toLowerCase().includes(qq)) : t
   })
@@ -9,15 +13,16 @@ export function queryable<T>(source: () => T[], by: (x: T) => string) {
     get q() {return q},
     set q(v) {q = v},
     get all() {return source().length},
-    get queried() {return queried},
-    [Symbol.iterator]() {return queried[Symbol.iterator]()}
+    get out() {return out},
+    [Symbol.iterator]() {return out[Symbol.iterator]()}
   }
 }
 export type Queryable<T> = ReturnType<typeof queryable<T>>
 
 const perPage = 40
 
-export function paginate<T>(source: () => T[]) {
+export function paginate<T>(source: Source<T[]>) {
+  source = canon(source)
   let page = $state(0)
   let pages = $derived(Math.ceil(source().length / perPage))
   let chunk = $derived(source().slice(page * perPage, (page + 1) * perPage))
@@ -33,9 +38,10 @@ export function paginate<T>(source: () => T[]) {
 }
 export type Paginate<T> = ReturnType<typeof paginate<T>>
 
-export function sortable<T>(source: () => T[], by: (x: T) => any) {
+export function sortable<T>(source: Source<T[]>, by: (x: T) => any) {
+  source = canon(source)
   let sortID = $state(0)
-  let sorted = $derived.by(() => {
+  let out = $derived.by(() => {
     const t = source()
     if (sortID === 0) return t
     let s = t.map<[number, any]>((x, i) => [i, by(x)]).sort((a, b) => b[1] - a[1])
@@ -45,7 +51,7 @@ export function sortable<T>(source: () => T[], by: (x: T) => any) {
   return {
     get sortID() {return sortID},
     set sortID(v) {sortID = v},
-    get sorted() {return sorted},
-    [Symbol.iterator]() {return sorted[Symbol.iterator]()}
+    get out() {return out},
+    [Symbol.iterator]() {return out[Symbol.iterator]()}
   }
 }

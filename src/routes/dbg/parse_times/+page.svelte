@@ -6,9 +6,9 @@
   import SortBtn from '$lib/SortBtn.svelte'
   let {data}: { data: import('./$types').PageData } = $props()
   let oe = $derived(Object.entries(data))
-  let q = queryable(() => oe, x => x[0])
-  let sb = sortable(() => q.queried, x => x[1])
-  let pag = paginate(() => sb.sorted)
+  const q = queryable(() => oe, x => x[0])
+  const sb = sortable(q, x => x[1])
+  const pag = paginate(sb)
   let timeFmt = useUnitFmt('microsecond')
 </script>
 <h1>Debug – parsing times</h1>

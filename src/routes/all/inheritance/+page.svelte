@@ -1,12 +1,12 @@
 <script lang="ts">
   import Paginator from '$lib/Paginator.svelte'
   import QInput from '$lib/QInput.svelte'
-    import SortBtn from '$lib/SortBtn.svelte'
+  import SortBtn from '$lib/SortBtn.svelte'
   import { queryable, paginate, sortable } from '$lib/data.svelte'
   let {data}: { data: import('./$types').PageData } = $props()
-  let q = queryable(() => data.indices, x => x[0])
-  let sb = sortable(() => q.queried, ([,j]) => data.inherits[j].length)
-  let pag = paginate(() => sb.sorted)
+  const q = queryable(() => data.indices, x => x[0])
+  const sb = sortable(q, ([,j]) => data.inherits[j].length)
+  const pag = paginate(sb)
   let selected = $state(-1)
   let selObj = $derived.by(() => ({
     str: selected >= 0 ? data.indices.find(([,i]) => i == selected)![0] : "",

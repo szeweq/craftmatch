@@ -4,9 +4,9 @@
   import SortBtn from '$lib/SortBtn.svelte'
   import { queryable, paginate, sortable } from '$lib/data.svelte'
   let {data}: { data: import('./$types').PageData } = $props()
-  let q = queryable(() => data?.strings ?? [], x => x[0])
-  let sb = sortable(() => q.queried, x => x[1].length)
-  let pag = paginate(() => sb.sorted)
+  const q = queryable(() => data?.strings ?? [], x => x[0])
+  const sb = sortable(q, x => x[1].length)
+  const pag = paginate(sb)
 </script>
 <section class="sticky top-0 rounded-md b-solid b-white/40 b-2 bgvar-c-bg1 p-1">
   <QInput {...q} />

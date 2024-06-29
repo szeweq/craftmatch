@@ -6,8 +6,8 @@
   let {data}: { data: import('./$types').PageData } = $props()
   let complx = $derived(Object.entries(data))
   const q = queryable(() => complx, x => x[0])
-  const sb = sortable(() => q.queried, x => x[1].total)
-  let pag = paginate(() => sb.sorted)
+  const sb = sortable(q, x => x[1].total)
+  const pag = paginate(sb)
 </script>
 <section class="sticky top-0 rounded-md b-solid b-white/40 b-2 bgvar-c-bg1 p-1">
   <QInput {...q} />
