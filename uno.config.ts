@@ -1,4 +1,4 @@
-import { defineConfig, presetIcons, presetUno } from 'unocss'
+import { defineConfig, presetIcons, presetUno, transformerCompileClass } from 'unocss'
 
 export default defineConfig({
   presets: [
@@ -9,6 +9,7 @@ export default defineConfig({
       }
     })
   ],
+  transformers: [transformerCompileClass({classPrefix: '_'})],
   rules: [
     [/^ga-(\w+)$/, (m) => ({'grid-area': m[1]})],
   ],
