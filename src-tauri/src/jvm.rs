@@ -5,7 +5,8 @@ use once_cell::sync::Lazy;
 use serde::Serialize;
 use zip::ZipArchive;
 
-use crate::{ext, jclass::{self, pool::PoolIter}};
+use crate::ext;
+use jclass::{self, pool::PoolIter};
 
 pub static PARSE_TIMES: Lazy<Mutex<HashMap<Box<str>, time::Duration>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 

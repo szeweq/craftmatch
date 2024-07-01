@@ -1,6 +1,6 @@
 use std::{sync::{Arc, Mutex}, time};
 
-use oauth2::{basic::{BasicClient, BasicTokenResponse}, reqwest, AccessToken, AuthUrl, ClientId, DeviceCode, DeviceCodeErrorResponse, DeviceCodeErrorResponseType, EndpointNotSet, EndpointSet, Scope, StandardDeviceAuthorizationResponse, TokenResponse, TokenUrl};
+use oauth2::{basic::{BasicClient, BasicTokenResponse}, reqwest::{self, header}, AccessToken, AuthUrl, ClientId, DeviceCode, DeviceCodeErrorResponse, DeviceCodeErrorResponseType, EndpointNotSet, EndpointSet, Scope, StandardDeviceAuthorizationResponse, TokenResponse, TokenUrl};
 use serde::{Deserialize, Serialize};
 
 const GH_CLIENT_ID: &str = "Ov23li3zsnysqjjjZLhm";
@@ -54,7 +54,7 @@ impl GithubClient {
     async fn gql_query(&self, query: &str) -> anyhow::Result<reqwest::Response> {
         let token = self.token()?;
         let resp = self.http.post("https://api.github.com/graphql").bearer_auth(token.secret())
-            .header(reqwest::header::USER_AGENT, reqwest::header::HeaderValue::from_static("craftmatch/0.1.0"))
+            .header(header::USER_AGENT, header::HeaderValue::from_static("craftmatch/0.1.0"))
             .json(&Query { query })
             .send().await?;
 
@@ -91,9 +91,9 @@ impl GithubClient {
 #[allow(dead_code)]
 fn default_headers() -> reqwest::header::HeaderMap {
     let mut headers = reqwest::header::HeaderMap::new();
-    headers.insert(reqwest::header::USER_AGENT, reqwest::header::HeaderValue::from_static("craftmatch/0.1.0"));
-    headers.insert(reqwest::header::ACCEPT, reqwest::header::HeaderValue::from_static("application/vnd.github+json"));
-    headers.insert("X-GitHub-Api-Version", reqwest::header::HeaderValue::from_static("2022-11-28"));
+    headers.insert(header::USER_AGENT, header::HeaderValue::from_static("craftmatch/0.1.0"));
+    headers.insert(header::ACCEPT, header::HeaderValue::from_static("application/vnd.github+json"));
+    headers.insert("X-GitHub-Api-Version", header::HeaderValue::from_static("2022-11-28"));
     headers
 }
 

@@ -8,7 +8,6 @@ mod ext;
 mod jvm;
 mod mc;
 mod slice;
-mod jclass;
 mod imp;
 mod id;
 mod loader;
