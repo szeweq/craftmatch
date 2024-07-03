@@ -37,7 +37,7 @@ opener = {version = "0.7", features = ["reveal"] }
 indexmap = {version = "2.2", features = ["rayon"] }
 oauth2 = "5.0.0-alpha"
 tokio = "1.38"
-jclass = {path = "pkg-jclass"}
+cm-jclass = {path = "pkg-jclass"}
 
 [lints.clippy]
 nursery = {level = "warn", priority = -1}

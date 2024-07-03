@@ -6,7 +6,7 @@ use serde::Serialize;
 use zip::ZipArchive;
 
 use crate::ext;
-use jclass::{self, pool::PoolIter};
+use cm_jclass::{self, pool::PoolIter, read::AtInterfaces, JClassReader};
 
 pub static PARSE_TIMES: Lazy<Mutex<HashMap<Box<str>, time::Duration>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
@@ -50,9 +50,9 @@ fn zip_classes<RS: Read + Seek>(zar: &mut ZipArchive<RS>, bytecode: bool) -> imp
 }
 
 #[inline]
-fn zip_jclass_readers<RS: Read + Seek>(zar: &mut ZipArchive<RS>) -> impl Iterator<Item = anyhow::Result<jclass::JClassReader<zip::read::ZipFile<'_>, jclass::read::AtInterfaces>>> + '_ {
+fn zip_jclass_readers<RS: Read + Seek>(zar: &mut ZipArchive<RS>) -> impl Iterator<Item = anyhow::Result<JClassReader<zip::read::ZipFile<'_>, AtInterfaces>>> + '_ {
     ext::zip_file_ext_iter(zar, ext::Extension::Class).map(|z| match z {
-        Ok(zf) => Ok(jclass::JClassReader::new(zf)?),
+        Ok(zf) => Ok(JClassReader::new(zf)?),
         Err(e) => Err(e.into())
     })
 }
@@ -176,7 +176,7 @@ pub fn gather_str_index_v2<RS: Read + Seek>(mut zar: ZipArchive<RS>) -> anyhow::
         let name = jcr.class_name()?.to_string().into_boxed_str();
         let sz = sidx.classes.len();
         sidx.classes.push(name);
-        for x in jcr.iter_pool().by_type::<jclass::idx::Utf8>() {
+        for x in jcr.iter_pool().by_type::<cm_jclass::idx::Utf8>() {
             sidx.strings.entry(x.to_string().into_boxed_str()).or_default().push(sz);
         }
     }
@@ -212,6 +212,6 @@ pub fn scan_fabric_mod_entry<RS: Read + Seek>(zipfile: &mut zip::ZipArchive<RS>,
     let mut zf = zipfile.by_name(&classfile)?;
     let mut buf = Vec::new();
     zf.read_to_end(&mut buf)?;
-    let jcr = jclass::JClassReader::new(buf.as_slice())?;
+    let jcr = JClassReader::new(buf.as_slice())?;
     jcr.class_name().map(|x| x.to_string().into_boxed_str())
 }
