@@ -11,7 +11,6 @@ mod slice;
 mod imp;
 mod id;
 mod loader;
-mod auth;
 
 use std::{borrow::Cow, collections::HashMap, fs::File, io, sync::Arc, time::Instant};
 use id::Id;
@@ -21,15 +20,13 @@ use workspace::{Gatherer, WSLock, WSMode};
 use crate::workspace::AllGather;
 
 #[command]
-async fn auth(app: tauri::AppHandle, state: State<'_, auth::GithubClient>) -> Result<bool, ()> {
+async fn auth(app: tauri::AppHandle, state: State<'_, cm_auth::GithubClient>) -> Result<bool, ()> {
     let r = state.authorize(|c, u| Ok(app.emit("authcode", (c, u))?)).await.map_err(|e| eprintln!("Error in auth: {} / {:?}", e, e));
     if r.is_ok() {
         let ghc = state.inner().clone();
         rt::spawn(async move {
             if let Ok(uinfo) = ghc.user_info().await.map_err(|e| eprintln!("Error in user_info: {} / {:?}", e, e)) {
-                if let Err(e) = app.emit("auth", uinfo) {
-                    eprintln!("Emit auth error: {e}");
-                }
+                emit_auth(app, Some(uinfo));
             }
         });
     }
@@ -38,14 +35,16 @@ async fn auth(app: tauri::AppHandle, state: State<'_, auth::GithubClient>) -> Re
 }
 
 #[command]
-async fn logout(app: tauri::AppHandle, state: State<'_, auth::GithubClient>) -> Result<(), ()> {
+async fn logout(app: tauri::AppHandle, state: State<'_, cm_auth::GithubClient>) -> Result<(), ()> {
     state.remove_token();
-    rt::spawn(async move {
-        if let Err(e) = app.emit("auth", None::<(Box<str>, Box<str>, u8)>) {
-            eprintln!("Emit auth error: {e}");
-        }
-    });
+    rt::spawn(async move { emit_auth(app, None); });
     Ok(())
+}
+
+fn emit_auth(app: tauri::AppHandle, info: Option<(Box<str>, Box<str>, u8)>) {
+    if let Err(e) = app.emit("auth", info) {
+        eprintln!("Emit auth error: {e}");
+    }
 }
 
 #[command]
@@ -240,7 +239,7 @@ fn dbg_parse_times() -> HashMap<Box<str>, f64> {
 fn main() {
     tauri::Builder::default()
         .manage(workspace::WSLock::new())
-        .manage(auth::GithubClient::setup().expect("Failed to setup github client"))
+        .manage(cm_auth::GithubClient::setup().expect("Failed to setup github client"))
         .setup(|app| {
             let wapp = app.handle().clone();
             app.listen("load", move |_| {

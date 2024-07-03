@@ -1,5 +1,6 @@
 use std::{sync::{Arc, Mutex}, time};
 
+use indexmap::IndexMap;
 use oauth2::{basic::{BasicClient, BasicTokenResponse}, reqwest::{self, header}, AccessToken, AuthUrl, ClientId, DeviceCode, DeviceCodeErrorResponse, DeviceCodeErrorResponseType, EndpointNotSet, EndpointSet, Scope, StandardDeviceAuthorizationResponse, TokenResponse, TokenUrl};
 use serde::{Deserialize, Serialize};
 
@@ -97,8 +98,9 @@ fn default_headers() -> reqwest::header::HeaderMap {
     headers
 }
 
-fn map_get_val<'a>(m: &'a serde_json::Map<String, serde_json::Value>, k: &str) -> anyhow::Result<&'a serde_json::Value> {
-    m.get(k).ok_or_else(|| anyhow::anyhow!("Failed to get {} in {:?}", k, m))
+#[inline]
+fn map_get_val<'a, T>(m: &'a IndexMap<String, T>, k: &str) -> anyhow::Result<&'a T> {
+    m.get(k).ok_or_else(|| anyhow::anyhow!("Failed to get {} in map", k))
 }
 
 #[derive(Deserialize)]
@@ -161,5 +163,5 @@ struct Query<'a> {
 
 #[derive(Deserialize)]
 struct Gql {
-    data: serde_json::Map<String, serde_json::Value>
+    data: IndexMap<String, serde_json::Map<String, serde_json::Value>>
 }

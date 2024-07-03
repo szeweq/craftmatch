@@ -555,6 +555,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "cm-auth"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "indexmap 2.2.6",
+ "oauth2",
+ "opener",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "cm-jclass"
 version = "0.1.0"
 dependencies = [
@@ -674,10 +687,10 @@ dependencies = [
  "anyhow",
  "base64 0.22.1",
  "cafebabe",
+ "cm-auth",
  "cm-jclass",
  "dirs",
  "indexmap 2.2.6",
- "oauth2",
  "once_cell",
  "opener",
  "rayon",
