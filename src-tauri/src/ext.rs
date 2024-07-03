@@ -21,11 +21,12 @@ pub enum Extension {
 
 impl Extension {
     pub fn from_path<P: AsRef<OsStr> + ?Sized>(p: &P) -> Self {
-        let p = Path::new(p);
+        Self::ext(Path::new(p))
+    }
+    fn ext(p: &Path) -> Self {
         let Some(x) = p.extension() else {
             return Self::Empty;
         };
-
         if x.eq_ignore_ascii_case("class") { Self::Class }
         else if x.eq_ignore_ascii_case("json") { Self::Json }
         else if x.eq_ignore_ascii_case("png") { Self::Png }
