@@ -8,7 +8,7 @@
   font-weight: 400;
 
   color: #fff;
-  background-color: #2f2f2f;
+  background-image: linear-gradient(to bottom, hsl(271, 18%, 20%), hsl(29, 18%, 20%));
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -17,8 +17,8 @@
   -webkit-text-size-adjust: 100%;
 
   --c-ring: #396cd8;
-  --c-bg1: #2f2f2f;
-  --c-bg2: #161616;
+  --c-bg1: #262626;
+  --c-bg2: #141414;
   --s-aside: 3rem;
   --cx1: 15 15 15;
 }

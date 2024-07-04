@@ -12,7 +12,7 @@ body {
 ::-webkit-scrollbar {
   height: 0.5rem;
   width: 0.5rem;
-  background-color: var(--c-bg2);
+  background-color: rgba(0 0 0 / 0.5);
 }
 ::-webkit-scrollbar-thumb {
   background-color: #fff4;
@@ -27,7 +27,7 @@ body {
 aside {
   grid-area: a;
   width: var(--s-aside);
-  background-color: var(--c-bg2);
+  background-color: rgba(0 0 0 / 0.5);
   display: flex;
   flex-flow: column nowrap;
   padding: .25rem;
@@ -62,6 +62,7 @@ button,
 select,
 a[role="button"],
 label.input-group {
+  position: relative;
   outline: none;
   border: none;
   border-radius: 8px;
@@ -74,6 +75,28 @@ label.input-group {
   background-color: rgb(var(--cx1) / .625);
   transition: box-shadow 0.1s;
 }
+:is(button, select, a[role="button"]):not(:disabled)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border: 2px solid transparent;
+  border-radius: inherit;
+  background-image: linear-gradient(to bottom, hsl(271, 80%, 50%), hsl(29, 80%, 50%));
+  opacity: 0;
+  background-origin: border-box;
+  mask: linear-gradient(black, black), linear-gradient(black, black);
+  mask-clip: content-box, border-box;
+  mask-composite: exclude;
+  transition: opacity 0.2s;
+}
+:is(button, select, a[role="button"]):not(:disabled):hover::after {
+  opacity: 1;
+}
+:is(button, select, a[role="button"]):not(:disabled):active::after {
+  opacity: 0.875;
+}
+
 label.input-group > input {
   outline: none;
   border: none;
@@ -99,11 +122,11 @@ button:disabled {
   color: #fff8;
 }
 
-:is(button, select, a[role="button"]):not(:disabled):hover {
+/* :is(button, select, a[role="button"]):not(:disabled):hover {
   box-shadow: inset 0 0 0 2px var(--c-ring);
-}
+} */
 :is(button, select, a[role="button"]):not(:disabled):active {
-  box-shadow: inset 0 0 0 2px var(--c-ring);
+  /* box-shadow: inset 0 0 0 2px var(--c-ring); */
   background-color: rgb(var(--cx1) / .4);
 }
 label.input-group:focus-within {
