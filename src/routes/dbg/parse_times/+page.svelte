@@ -12,7 +12,7 @@
   let timeFmt = useUnitFmt('microsecond')
 </script>
 <h1>Debug – parsing times</h1>
-<section class="sticky top-0 rounded-md b-solid b-white/40 b-2 bgvar-c-bg1 p-1">
+<section class="stick-top rounded-md b-solid b-white/40 b-2 bgvar-c-bg1 p-1">
   <QInput {...q} />
   <SortBtn label="Sort by time" bind:sort={sb.sortID} />
   <Paginator {pag} />
@@ -20,5 +20,7 @@
 <ul class="text-xs">
   {#each pag as [k, v] (k)}
     <li>{k}: {timeFmt(1e6 * v)}</li>
+  {:else}
+    <li class="text-center">No results</li>
   {/each}
 </ul>

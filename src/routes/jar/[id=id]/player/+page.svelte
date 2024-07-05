@@ -13,7 +13,7 @@ let selected = $state(-1)
     <div>It seems that this mod does not have any audio files.</div>
   {/if}
 </div>
-<div class="sticky bottom-0 left-[calc(var(--s-aside)+1rem)] right-4">
+<div class="stick-bottom left-[calc(var(--s-aside)+1rem)] right-4">
   {#if selected >= 0 && selected < data.files.length}
     {@const m = data.files[selected]}
     <audio class="w-full" controls autoplay src={convertFileSrc(data.id, 'raw') + '/' + m} preload="auto"></audio>

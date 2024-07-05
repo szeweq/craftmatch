@@ -17,7 +17,7 @@ export default defineConfig({
     m => m.startsWith('sel:') ? ({matcher: m.slice(4), selector: s => s + ' input:checked + span'}) : m
   ],
   shortcuts: [
-    {f: 'flex', g: 'grid'},
+    {f: 'flex', g: 'grid', 'stick-top': 'sticky top-0', 'stick-bottom': 'sticky bottom-0'},
     [/^bgvar-(.+)$/, ([, c]) => `bg-[var(--${c})]`]
   ]
 })

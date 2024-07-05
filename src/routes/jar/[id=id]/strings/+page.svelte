@@ -8,7 +8,7 @@
   const sb = sortable(q, x => x[1].length)
   const pag = paginate(sb)
 </script>
-<section class="sticky top-0 rounded-md b-solid b-white/40 b-2 bgvar-c-bg1 p-1">
+<section class="stick-top rounded-md b-solid b-white/40 b-2 bgvar-c-bg1 p-1">
   <QInput {...q} />
   <SortBtn label="Sort by count" bind:sort={sb.sortID} />
   <Paginator {pag} />
