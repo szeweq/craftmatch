@@ -75,7 +75,8 @@ label.input-group {
   background-color: rgb(var(--cx1) / .625);
   transition: box-shadow 0.1s;
 }
-:is(button, select, a[role="button"]):not(:disabled)::after {
+:is(button, select, a[role="button"], label.input-group):not(:disabled)::after {
+  --b: linear-gradient(black, black);
   content: '';
   position: absolute;
   inset: 0;
@@ -84,17 +85,20 @@ label.input-group {
   border-radius: inherit;
   background-image: linear-gradient(to bottom, hsl(271, 80%, 50%), hsl(29, 80%, 50%));
   opacity: 0;
+  transition: opacity 0.2s;
   background-origin: border-box;
-  mask: linear-gradient(black, black), linear-gradient(black, black);
+  -webkit-mask-image: var(--b), var(--b);
+  -webkit-mask-clip: content, border;
+  -webkit-mask-composite: xor;
+  mask-image: var(--b), var(--b);
   mask-clip: content-box, border-box;
   mask-composite: exclude;
-  transition: opacity 0.2s;
 }
 :is(button, select, a[role="button"]):not(:disabled):hover::after {
-  opacity: 1;
+  opacity: 0.875;
 }
 :is(button, select, a[role="button"]):not(:disabled):active::after {
-  opacity: 0.875;
+  opacity: 0.75;
 }
 
 label.input-group > input {
@@ -122,15 +126,11 @@ button:disabled {
   color: #fff8;
 }
 
-/* :is(button, select, a[role="button"]):not(:disabled):hover {
-  box-shadow: inset 0 0 0 2px var(--c-ring);
-} */
 :is(button, select, a[role="button"]):not(:disabled):active {
-  /* box-shadow: inset 0 0 0 2px var(--c-ring); */
   background-color: rgb(var(--cx1) / .4);
 }
-label.input-group:focus-within {
-  box-shadow: inset 0 -2px 0 var(--c-ring);
+label.input-group:focus-within::after {
+  opacity: 0.75;
 }
 
 button.btn-icon {
