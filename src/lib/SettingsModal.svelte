@@ -1,28 +1,19 @@
 <script lang="ts">
   import { settings } from "./settings.svelte"
   import { currentLang } from "./intl.svelte"
-  let {open, onclose}: {open: boolean, onclose?: () => void} = $props()
-  let dialog: HTMLDialogElement = $state()
-  $effect.pre(() => {
-    if (dialog) {
-      if (open) dialog.showModal()
-      else dialog.close()
-    }
-  })
+  let {onclose}: {onclose?: () => void} = $props()
 </script>
-<dialog bind:this={dialog} class="w-50vw">
-  <section>
-    <h2>About</h2>
-    <div>Craftmatch</div>
-    <div>by Szeweq</div>
-    <div>
-      <label>
-        <input id="loc" type="checkbox" bind:checked={settings.loc}>
-        <span>Use local language for formatting</span>
-      </label>
-      <div>Current language: {currentLang()}</div>
-    </div>
-    <div></div>
-    <nav><button onclick={onclose}>Close</button></nav>
-  </section>
-</dialog>
+<section>
+  <h2>About</h2>
+  <div>Craftmatch</div>
+  <div>by Szeweq</div>
+  <div>
+    <label>
+      <input id="loc" type="checkbox" bind:checked={settings.loc}>
+      <span>Use local language for formatting</span>
+    </label>
+    <div>Current language: {currentLang()}</div>
+  </div>
+  <div></div>
+  <nav><button onclick={onclose}>Close</button></nav>
+</section>

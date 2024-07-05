@@ -8,6 +8,7 @@ import SettingsModal from "$lib/SettingsModal.svelte"
 import { goto } from "$app/navigation"
 import AuthModal from "$lib/AuthModal.svelte"
 import { user } from "$lib/auth.svelte"
+    import Modal from "$lib/Modal.svelte";
 let {children} = $props()
 let backEnabled = $state(false)
 $effect.pre(() => page.subscribe(p => backEnabled = p.url.pathname !== "/"))
@@ -31,5 +32,6 @@ const closeDialog = () => openDialog = 0
   <Loading />
 </main>
 <footer>...</footer>
-<SettingsModal open={openDialog === 1} onclose={closeDialog}/>
-<AuthModal open={openDialog === 2} onclose={closeDialog} />
+<Modal open={openDialog === 1}><SettingsModal onclose={closeDialog}/></Modal>
+<Modal open={openDialog === 2}><AuthModal onclose={closeDialog} /></Modal>
+
