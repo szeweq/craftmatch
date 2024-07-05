@@ -228,13 +228,17 @@ ul {
   background-color: transparent;
 }
 
-.sort-asc::after {
-  content: '\2191';
-  padding-inline-start: .25rem;
+:is(.sort-none, .sort-asc, .sort-desc)::before {
+  padding-inline-end: .25rem;
 }
-.sort-desc::after {
+.sort-none::before {
+  content: '\2195';
+}
+.sort-asc::before {
+  content: '\2191';
+}
+.sort-desc::before {
   content: '\2193';
-  padding-inline-start: .25rem;
 }
 
 main .attop {
