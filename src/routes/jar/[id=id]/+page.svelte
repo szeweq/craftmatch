@@ -1,18 +1,19 @@
 <script lang="ts">
-  import { mainColors } from '$lib/gradient.svelte'
+  import { imgColors } from '$lib/gradient.svelte'
   import { invokeWS } from '$lib/ws'
   import { convertFileSrc } from '@tauri-apps/api/core'
 
   const versionRegexp = /^(\d+)(\.(\d+)(\.(\d+))?)?/
   let {data}: { data: import('./$types').PageData } = $props()
+  let img = $state<HTMLImageElement | null>(null)
   function imgError(e: Event & { currentTarget: HTMLImageElement }) {
     e.currentTarget.setAttribute("is-broken", "")
   }
   function logoUrl(path: string) {
     return path ? convertFileSrc(data.id, 'raw') + '/' + path : ""
   }
-  let gradient = mainColors(() => logoUrl(data.mods[0]?.logo_path))
-  $effect.pre(() => gradient.compute())
+  let gradient = imgColors(() => img)
+  $effect(() => gradient.compute())
 </script>
 <div class="attop" style={`--top-bg: ${gradient.bg}`}></div>
 <h1>File: {data.name}</h1>
@@ -40,7 +41,7 @@
     {/if}
     <div class="text-xs">This mod is developed for {data.type} (or alike).</div>
     {#if m.logo_path}<div>
-      <img src={logoUrl(m.logo_path)} alt="logo" class="min-w-16 max-w-48" onerror={imgError} />
+      <img bind:this={img} src={logoUrl(m.logo_path)} crossorigin="" alt="logo" class="min-w-16 max-w-48" onerror={imgError} />
       <span class="img-error c-amber text-xs">Failed to load image: {m.logo_path}</span>
     </div>{/if}
   </div>

@@ -1,15 +1,14 @@
-const imgData = (src: string) => new Promise<Uint8ClampedArray>((ok, err) => {
-  const c = document.createElement("canvas"), ctx = c.getContext("2d"), img = new Image
-  img.onload = () => {
-    c.width = img.width
-    c.height = img.height
-    ctx.drawImage(img, 0, 0)
-    ok(ctx.getImageData(0, 0, img.width, img.height).data)
-  }
-  img.onerror = () => err(new Error("Failed to load image"))
-  img.crossOrigin = ''
-  img.src = src
+const htmlImg = (img: HTMLImageElement) => new Promise<Uint8ClampedArray>((ok, err) => {
+  const fn = () => ok(drawImage(img))
+  if (img.complete) fn(); else img.onload = fn
 })
+const drawImage = (img: HTMLImageElement) => {
+  const c = document.createElement("canvas"), ctx = c.getContext("2d")
+  c.width = img.width
+  c.height = img.height
+  ctx.drawImage(img, 0, 0)
+  return ctx.getImageData(0, 0, img.width, img.height).data
+}
 const hex = (n: number) => (n|0).toString(16).padStart(2, '0')
 const grayscale = (r: number, g: number, b: number) => 0.299 * r + 0.587 * g + 0.114 * b
 const rgb2hsl = (r: number, g: number, b: number) => {
@@ -41,7 +40,6 @@ const hsl2rgb = (h: number, s: number, l: number) => {
   return [r * 255, g * 255, b * 255]
 }
 const findColor = (d: Uint8ClampedArray) => {
-  console.time("fc")
   const gap = 40, cols = new Map<string, number>
   for (let i = 0; i < d.length; i += gap) {
     let [r, g, b] = d.subarray(i, i + 3);
@@ -52,26 +50,24 @@ const findColor = (d: Uint8ClampedArray) => {
 
     cols.set(c, (cols.get(c) ?? 0) + 1)
   }
-  let col = "none", cnum = 0
+  let col = "", cnum = 0
   for (const [c, n] of cols) {
     if (n > cnum) {
       col = c
       cnum = n
     }
   }
-  //const z = [...cols.entries()].sort((a, b) => b[1] - a[1]).map(x => '#' + x[0]).slice(0, 4)
-  console.timeEnd("fc")
-  return '#' + col
+  return cnum ? '#' + col : 'none'
 }
 
-export function mainColors(src: () => string) {
+export function imgColors(src: () => HTMLImageElement) {
   let bg = $state("none")
 
   return {
     get bg() {return bg},
     compute() {
       const s = src()
-      s && imgData(s).then(d => bg = findColor(d))
+      s && htmlImg(s).then(d => bg = findColor(d))
     }
   }
 }
