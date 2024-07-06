@@ -25,7 +25,7 @@
   <a role="button" href="/jar/{data.id}/recipes">Recipes</a>
   <a role="button" href="/jar/{data.id}/player">Player</a>
 </nav>
-{#each data.mods as m (m.slug)}
+{#each data.mods as m, i (m.slug)}
   <div class="px-2">
     <h2>{m.name}</h2>
     <p>{m.description}</p>
@@ -44,6 +44,14 @@
       <img bind:this={img} src={logoUrl(m.logo_path)} crossorigin="" alt="logo" class="min-w-16 max-w-48" onerror={imgError} />
       <span class="img-error c-amber text-xs">Failed to load image: {m.logo_path}</span>
     </div>{/if}
+    <div>
+      <h3>Dependencies</h3>
+      <ul class="text-sm b-2 b-solid b-white/40 rounded-md list-none mx-0 my-2 text-truncate">
+        {#each Object.entries(data.deps[m.slug]) as [d, [v, r]] (d)}
+          <li class="hover:bg-white/20 justify-between p-1 items-center">{d}: {v} ({r})</li>
+        {/each}
+      </ul>
+    </div>
   </div>
 {/each}
 {#if !data.mods}

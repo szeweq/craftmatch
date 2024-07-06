@@ -1,5 +1,7 @@
-import { wsModData } from '$lib/ws'
+import { wsModData, wsDepMap } from '$lib/ws'
 
-export function load({ params }) {
-    return wsModData(params.id as FileID)
+export async function load({ params }) {
+    const [md, d] = await Promise.all([wsModData(params.id as FileID), wsDepMap(params.id as FileID)])
+    const deps = Object.fromEntries(d)
+    return { deps, ...md }
 }

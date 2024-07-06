@@ -182,6 +182,9 @@ pub type Gatherer<T> = fn(&FileInfo) -> anyhow::Result<T>;
 pub fn gather_mod_data(fi: &FileInfo) -> anyhow::Result<loader::ModTypeData> {
     loader::extract_mod_info(&mut fi.open_buf()?)
 }
+pub fn gather_dep_map(fi: &FileInfo) -> anyhow::Result<loader::DepMap> {
+    loader::extract_dep_map(&mut fi.open_buf()?)
+}
 pub fn gather_file_type_sizes(fi: &FileInfo) -> anyhow::Result<extract::ModFileTypeSizes> {
     extract::compute_file_type_sizes(&mut fi.open_mem()?)
 }

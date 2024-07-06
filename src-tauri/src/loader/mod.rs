@@ -9,7 +9,7 @@ pub mod forge;
 pub trait Extractor {
     type Data;
     fn mod_info(&self) -> Self::Data;
-    fn deps(&self) -> anyhow::Result<()>;
+    fn deps(&self) -> anyhow::Result<DepMap>;
     fn entries<RS: Read + Seek>(&self, zipfile: &mut zip::ZipArchive<RS>) -> anyhow::Result<jvm::ModEntries>;
 }
 
@@ -27,7 +27,7 @@ impl Extractor for ExtractLoader {
             Self::Forge(x) => Ld::Forge(x.mod_info()),
         }
     }
-    fn deps(&self) -> anyhow::Result<()> {
+    fn deps(&self) -> anyhow::Result<DepMap> {
         match self {
             Self::Fabric(x) => x.deps(),
             Self::Forge(x) => x.deps(),
@@ -83,16 +83,23 @@ pub fn extract_mod_info<RS: Read + Seek>(zar: &mut zip::ZipArchive<RS>) -> anyho
         Ld::Forge(md) => ModTypeData::Forge(md)
     })
 }
-
-#[allow(dead_code)]
-pub struct VersionInfo {
-    pub provided: Option<Box<str>>,
-    pub required: Vec<Box<str>>,
-    pub optional: Vec<Box<str>>
+pub fn extract_dep_map<RS: Read + Seek>(zar: &mut zip::ZipArchive<RS>) -> anyhow::Result<DepMap> {
+    get_extractor(zar)?.deps()
 }
 
-#[allow(dead_code)]
-pub struct VersionMap(HashMap<Box<str>, VersionInfo>);
+#[derive(serde::Serialize)]
+pub struct VersionData(Box<str>, VersionType);
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum VersionType {
+    Provided,
+    Required,
+    Optional
+}
+
+#[derive(serde::Serialize)]
+pub struct DepMap(Box<[(Box<str>, HashMap<Box<str>, VersionData>)]>);
 
 
 #[allow(dead_code)]

@@ -48,6 +48,9 @@ function invokeWithMode<T>(cmd: string) {
 export async function wsModData(id: FileID) {
   return await invoke<(ModData | null)>('ws_mod_data', {id})
 }
+export async function wsDepMap(id: FileID) {
+  return await invoke<[string, Record<string, [string, string]>][]>('ws_dep_map', {id})
+}
 export async function wsModPlayable(id: FileID) {
   return await invoke<(string[] | null)>('ws_mod_playable', {id})
 }

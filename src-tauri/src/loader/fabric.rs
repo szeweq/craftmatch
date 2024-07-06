@@ -1,8 +1,8 @@
 use std::{collections::HashMap, io::{Read, Seek}};
 
-use crate::jvm;
+use crate::{jvm, loader::{VersionData, VersionType}};
 
-use super::{Extractor, ModData};
+use super::{DepMap, Extractor, ModData};
 use anyhow::anyhow;
 
 #[derive(serde::Deserialize)]
@@ -37,11 +37,20 @@ impl Extractor for ExtractFabric {
             url: fm.contact.as_ref().and_then(|m| m.get("home").cloned())
         }])
     }
-    fn deps(&self) -> anyhow::Result<()> {
+    fn deps(&self) -> anyhow::Result<DepMap> {
         let fm = &self.0;
-        eprintln!("depends: {:?}", fm.depends);
-        eprintln!("suggests: {:?}", fm.suggests);
-        Ok(())
+        let mut map = HashMap::new();
+        if let Some(d) = &fm.depends {
+            for (k, v) in d {
+                map.insert(k.clone(), VersionData(v.clone(), VersionType::Required));
+            }
+        }
+        if let Some(d) = &fm.suggests {
+            for (k, v) in d {
+                map.insert(k.clone(), VersionData(v.clone(), VersionType::Optional));
+            }
+        }
+        Ok(DepMap(Box::new([(fm.id.clone(), map)])))
     }
     fn entries<RS: Read + Seek>(&self, zipfile: &mut zip::ZipArchive<RS>) -> anyhow::Result<jvm::ModEntries> {
         let Some(entrypoints) = self.0.entrypoints.as_ref() else {

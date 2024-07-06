@@ -1,8 +1,8 @@
 use std::{collections::HashMap, io::{Read, Seek}};
 
-use crate::jvm;
+use crate::{jvm, loader::{VersionData, VersionType}};
 
-use super::{Extractor, ModData};
+use super::{DepMap, Extractor, ModData};
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -57,15 +57,21 @@ impl Extractor for ExtractForge {
         })
         .collect::<Box<_>>()
     }
-    fn deps(&self) -> anyhow::Result<()> {
+    fn deps(&self) -> anyhow::Result<DepMap> {
+        let mut v = Vec::new();
         let depm = &self.0.dependencies;
         for (dn, dv) in depm {
-            eprintln!("{dn}");
+            let mut map = HashMap::new();
             for d in dv {
-                eprintln!(" - {}", d.mod_id);
+                let vd = VersionData(
+                    d.version_range.clone(),
+                    if d.mandatory { VersionType::Required } else { VersionType::Optional }
+                );
+                map.insert(d.mod_id.clone(), vd);
             }
+            v.push((dn.clone(), map));
         }
-        Ok(())
+        Ok(DepMap(v.into_boxed_slice()))
     }
     fn entries<RS: Read + Seek>(&self, zipfile: &mut zip::ZipArchive<RS>) -> anyhow::Result<jvm::ModEntries> {
         let mi = self.mod_info();
