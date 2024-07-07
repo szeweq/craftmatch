@@ -7,6 +7,8 @@ use super::{DepMap, Extractor, ModData};
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct ForgeMetadata {
+    #[serde(skip)]
+    pub(super) impl_version: Option<Box<str>>,
     license: Option<Box<str>>,
     //#[serde(rename = "issueTrackerURL")]
     //issue_tracker_url: Option<Box<str>>,
@@ -45,10 +47,15 @@ impl Extractor for ExtractForge {
     fn mod_info(&self) -> Self::Data {
         let license = &self.0.license;
         let mods = &self.0.mods;
+        let impl_version = &self.0.impl_version;
         mods.iter().map(|fmi| ModData {
             name: fmi.display_name.clone(),
             slug: fmi.mod_id.clone(),
-            version: fmi.version.clone(),
+            version: if fmi.version.starts_with('$') {
+                impl_version.as_ref().unwrap_or(&fmi.version)
+            } else {
+                &fmi.version
+            }.clone(),
             authors: fmi.authors.clone(),
             description: fmi.description.clone(),
             license: license.clone(),

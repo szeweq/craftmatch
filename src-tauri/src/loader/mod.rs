@@ -49,7 +49,10 @@ fn get_extractor<RS: Read + Seek>(zip: &mut zip::ZipArchive<RS>) -> anyhow::Resu
         let mut s = String::with_capacity(mf.size() as usize);
         mf.read_to_string(&mut s)?;
         drop(mf);
-        Ld::Forge(forge::ExtractForge(toml::from_str(&s)?))
+        let mut fmd: forge::ForgeMetadata = toml::from_str(&s)?;
+        let impl_version = version_from_mf(zip);
+        fmd.impl_version = impl_version;
+        Ld::Forge(forge::ExtractForge(fmd))
     } else {
         return Err(anyhow!("No manifest in jar"));
     })
@@ -108,14 +111,10 @@ impl ExtendSelf for DepMap {
 }
 iter_extend!(DepMap);
 
-#[allow(dead_code)]
-fn version_from_mf<RS: Read + Seek>(zip: &mut zip::ZipArchive<RS>) -> anyhow::Result<Box<str>> {
-    let manifest = zip.by_name("META-INF/MANIFEST.MF")?;
+fn version_from_mf<RS: Read + Seek>(zip: &mut zip::ZipArchive<RS>) -> Option<Box<str>> {
+    let manifest = zip.by_name("META-INF/MANIFEST.MF").ok()?;
     let bufr = BufReader::new(manifest);
-    let Some(fl) = bufr.lines().find_map(|l| l.ok().and_then(|l| l.strip_prefix("Implementation-Version: ").map(|x| x.to_string().into_boxed_str()))) else {
-        return Err(anyhow!("No version in manifest"));
-    };
-    Ok(fl)
+    bufr.lines().find_map(|l| l.ok().and_then(|l| l.strip_prefix("Implementation-Version: ").map(|x| x.to_string().into_boxed_str())))
 }
 
 pub fn extract_mod_entries<RS: Read + Seek>(zipfile: &mut zip::ZipArchive<RS>, mtd: &ModTypeData) -> anyhow::Result<jvm::ModEntries> {
