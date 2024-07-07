@@ -51,7 +51,7 @@ impl Extractor for ExtractForge {
         mods.iter().map(|fmi| ModData {
             name: fmi.display_name.clone(),
             slug: fmi.mod_id.clone(),
-            version: if fmi.version.starts_with('$') {
+            version: if fmi.version.trim_start().starts_with('$') {
                 impl_version.as_ref().unwrap_or(&fmi.version)
             } else {
                 &fmi.version
