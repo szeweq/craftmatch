@@ -695,6 +695,7 @@ dependencies = [
  "opener",
  "rayon",
  "rfd",
+ "semver",
  "serde",
  "serde_json",
  "state",

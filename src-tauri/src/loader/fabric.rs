@@ -5,6 +5,8 @@ use crate::{jvm, loader::{VersionData, VersionType}};
 use super::{DepMap, Extractor, ModData};
 use anyhow::anyhow;
 
+type VersionReqMap = HashMap<Box<str>, semver::VersionReq>;
+
 #[derive(serde::Deserialize)]
 pub(super) struct FabricMetadata {
     id: Box<str>,
@@ -15,8 +17,8 @@ pub(super) struct FabricMetadata {
     license: Option<OneOrMany<Box<str>>>,
     icon: Option<Box<str>>,
     contact: Option<HashMap<Box<str>, Box<str>>>,
-    depends: Option<HashMap<Box<str>, Box<str>>>,
-    suggests: Option<HashMap<Box<str>, Box<str>>>,
+    depends: Option<VersionReqMap>,
+    suggests: Option<VersionReqMap>,
     entrypoints: Option<HashMap<Box<str>, Box<[Entrypoints]>>>
 }
 

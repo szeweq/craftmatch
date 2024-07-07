@@ -64,7 +64,7 @@ impl Extractor for ExtractForge {
             let mut map = HashMap::new();
             for d in dv {
                 let vd = VersionData(
-                    d.version_range.clone(),
+                    translate_version(&d.version_range)?,
                     if d.mandatory { VersionType::Required } else { VersionType::Optional }
                 );
                 map.insert(d.mod_id.clone(), vd);
@@ -78,5 +78,43 @@ impl Extractor for ExtractForge {
         let slugs = mi.iter().map(|m| &*m.slug).collect::<Box<_>>();
         let classes = jvm::scan_forge_mod_entries(zipfile, &slugs)?;
         Ok(jvm::ModEntries { classes })
+    }
+}
+
+fn translate_version(mut ver: &str) -> anyhow::Result<semver::VersionReq> {
+    ver = ver.trim();
+    let start = if ver.starts_with('[') {
+        Some(true)
+    } else if ver.starts_with('(') {
+        Some(false)
+    } else {
+        None
+    };
+    let end = if ver.ends_with(']') {
+        Some(true)
+    } else if ver.ends_with(')') {
+        Some(false)
+    } else {
+        None
+    };
+    if let (Some(b), Some(e)) = (start, end) {
+        ver = &ver[1..ver.len()-1];
+        let (mut vfrom, mut vto) = ver.split_once(',').ok_or_else(|| anyhow::anyhow!("Invalid version range"))?;
+        vfrom = vfrom.trim();
+        vto = vto.trim();
+        let mut cv = Vec::new();
+        if !vfrom.is_empty() {
+            let mut cc = semver::Comparator::parse(vfrom)?;
+            cc.op = if b { semver::Op::GreaterEq } else { semver::Op::Greater };
+            cv.push(cc);
+        }
+        if !vto.is_empty() {
+            let mut cc = semver::Comparator::parse(vto)?;
+            cc.op = if e { semver::Op::LessEq } else { semver::Op::Less };
+            cv.push(cc);
+        }
+        Ok(semver::VersionReq { comparators: cv })
+    } else {
+        Ok(semver::VersionReq::parse(ver)?)
     }
 }

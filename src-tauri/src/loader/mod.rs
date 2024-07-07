@@ -88,7 +88,7 @@ pub fn extract_dep_map<RS: Read + Seek>(zar: &mut zip::ZipArchive<RS>) -> anyhow
 }
 
 #[derive(serde::Serialize)]
-pub struct VersionData(Box<str>, VersionType);
+pub struct VersionData(semver::VersionReq, VersionType);
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "lowercase")]
