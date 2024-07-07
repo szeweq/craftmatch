@@ -71,7 +71,7 @@ impl Extractor for ExtractForge {
             }
             v.push((dn.clone(), map));
         }
-        Ok(DepMap(v.into_boxed_slice()))
+        Ok(DepMap(v))
     }
     fn entries<RS: Read + Seek>(&self, zipfile: &mut zip::ZipArchive<RS>) -> anyhow::Result<jvm::ModEntries> {
         let mi = self.mod_info();

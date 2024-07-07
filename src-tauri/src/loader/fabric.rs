@@ -52,7 +52,7 @@ impl Extractor for ExtractFabric {
                 map.insert(k.clone(), VersionData(v.clone(), VersionType::Optional));
             }
         }
-        Ok(DepMap(Box::new([(fm.id.clone(), map)])))
+        Ok(DepMap(vec![(fm.id.clone(), map)]))
     }
     fn entries<RS: Read + Seek>(&self, zipfile: &mut zip::ZipArchive<RS>) -> anyhow::Result<jvm::ModEntries> {
         let Some(entrypoints) = self.0.entrypoints.as_ref() else {

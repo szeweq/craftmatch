@@ -1,7 +1,7 @@
 use std::{collections::HashMap, io::{BufRead, BufReader, Read, Seek}};
 use anyhow::anyhow;
 
-use crate::jvm;
+use crate::{iter_extend, jvm, slice::ExtendSelf};
 
 pub mod fabric;
 pub mod forge;
@@ -87,10 +87,10 @@ pub fn extract_dep_map<RS: Read + Seek>(zar: &mut zip::ZipArchive<RS>) -> anyhow
     get_extractor(zar)?.deps()
 }
 
-#[derive(serde::Serialize)]
+#[derive(Clone, serde::Serialize)]
 pub struct VersionData(semver::VersionReq, VersionType);
 
-#[derive(serde::Serialize)]
+#[derive(Clone, Copy, serde::Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum VersionType {
     Provided,
@@ -98,9 +98,15 @@ pub enum VersionType {
     Optional
 }
 
-#[derive(serde::Serialize)]
-pub struct DepMap(Box<[(Box<str>, HashMap<Box<str>, VersionData>)]>);
+#[derive(Default, serde::Serialize)]
+pub struct DepMap(Vec<(Box<str>, HashMap<Box<str>, VersionData>)>);
 
+impl ExtendSelf for DepMap {
+    fn extend(&mut self, other: &Self) {
+        self.0.extend(other.0.iter().cloned());
+    }
+}
+iter_extend!(DepMap);
 
 #[allow(dead_code)]
 fn version_from_mf<RS: Read + Seek>(zip: &mut zip::ZipArchive<RS>) -> anyhow::Result<Box<str>> {
