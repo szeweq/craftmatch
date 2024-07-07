@@ -139,10 +139,6 @@ fn ws_mod_data(state: State<'_, WSLock>, id: Id) -> Option<Arc<loader::ModTypeDa
     ws_item(state, id, workspace::gather_mod_data).inspect_err(|e| eprintln!("Error in ws_mod_data: {e}")).ok()
 }
 #[command]
-fn ws_dep_map(state: State<'_, WSLock>, id: Id) -> Option<Arc<loader::DepMap>> {
-    ws_item(state, id, workspace::gather_dep_map).inspect_err(|e| eprintln!("Error in ws_dep_map: {e}")).ok()
-}
-#[command]
 fn ws_str_index(state: State<'_, WSLock>, id: Id) -> Option<Arc<jvm::StrIndexMapped>> {
     ws_item(state, id, workspace::gather_str_index).inspect_err(|e| eprintln!("Error in ws_str_index: {e}")).ok()
 }
@@ -153,6 +149,12 @@ fn ws_file_type_sizes(state: State<'_, WSLock>, mode: WSMode) -> Option<Arc<extr
     }).inspect_err(|e| eprintln!("Error in ws_file_type_sizes: {e}")).ok()
 }
 
+#[command]
+fn ws_dep_map(state: State<'_, WSLock>, mode: WSMode) -> Option<Arc<loader::DepMap>> {
+    state.mods().and_then(|afe| {
+        mode.gather_from_entries(&afe, workspace::gather_dep_map)
+    }).inspect_err(|e| eprintln!("Error in ws_dep_map: {e}")).ok()
+}
 #[command]
 fn ws_content_sizes(state: State<'_, WSLock>, mode: WSMode) -> Option<Arc<extract::ModContentSizes>> {
     state.mods().and_then(|afe| {

@@ -91,7 +91,7 @@ pub fn extract_dep_map<RS: Read + Seek>(zar: &mut zip::ZipArchive<RS>) -> anyhow
 }
 
 #[derive(Clone, serde::Serialize)]
-pub struct VersionData(semver::VersionReq, VersionType);
+pub struct VersionData(ParsedVersionReq, VersionType);
 
 #[derive(Clone, Copy, serde::Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -102,7 +102,7 @@ pub enum VersionType {
 }
 
 #[derive(Default, serde::Serialize)]
-pub struct DepMap(Vec<(Box<str>, HashMap<Box<str>, VersionData>)>);
+pub struct DepMap(Vec<(Box<str>, Option<semver::Version>, HashMap<Box<str>, VersionData>)>);
 
 impl ExtendSelf for DepMap {
     fn extend(&mut self, other: &Self) {
@@ -110,6 +110,31 @@ impl ExtendSelf for DepMap {
     }
 }
 iter_extend!(DepMap);
+
+#[derive(Clone)]
+pub enum ParsedVersionReq {
+    Correct(semver::VersionReq),
+    Invalid(Box<str>)
+}
+impl ParsedVersionReq {
+    pub fn parse(v: &str) -> Self {
+        semver::VersionReq::parse(v).map_or_else(|_| Self::Invalid(v.into()), Self::Correct)
+    }
+}
+impl <'de> serde::Deserialize<'de> for ParsedVersionReq {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: serde::Deserializer<'de> {
+        let s = Box::<str>::deserialize(deserializer)?;
+        Ok(semver::VersionReq::parse(&s).map_or_else(|_| Self::Invalid(s), Self::Correct))
+    }
+}
+impl serde::Serialize for ParsedVersionReq {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer {
+        match self {
+            Self::Correct(v) => v.serialize(serializer),
+            Self::Invalid(s) => s.serialize(serializer)
+        }
+    }
+}
 
 fn version_from_mf<RS: Read + Seek>(zip: &mut zip::ZipArchive<RS>) -> Option<Box<str>> {
     let manifest = zip.by_name("META-INF/MANIFEST.MF").ok()?;

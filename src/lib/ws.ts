@@ -57,7 +57,7 @@ export async function wsStrIndex(id: FileID) {
 export async function wsModEntries(id: FileID) {
   return await invoke<{}>('ws_mod_entries', {id})
 }
-export const wsDepMap = invokeWithMode<[string, Record<string, [string, string]>][]>('ws_dep_map')
+export const wsDepMap = invokeWithMode<[string, string, Record<string, [string, string]>][]>('ws_dep_map')
 export const wsFileTypeSizes = invokeWithMode<Record<string, [number, number, number]>>('ws_file_type_sizes')
 export const wsContentSizes = invokeWithMode<Record<ContentTypes, [number, number, number]>>('ws_content_sizes')
 export const wsInheritance = invokeWithMode<Inheritance>('ws_inheritance')

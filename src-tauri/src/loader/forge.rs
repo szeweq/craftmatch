@@ -2,7 +2,7 @@ use std::{collections::HashMap, io::{Read, Seek}};
 
 use crate::{jvm, loader::{VersionData, VersionType}};
 
-use super::{DepMap, Extractor, ModData};
+use super::{DepMap, Extractor, ModData, ParsedVersionReq};
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -66,8 +66,15 @@ impl Extractor for ExtractForge {
     }
     fn deps(&self) -> anyhow::Result<DepMap> {
         let mut v = Vec::new();
+        let impl_version = &self.0.impl_version;
         let depm = &self.0.dependencies;
-        for (dn, dv) in depm {
+        for fmi in self.0.mods.iter() {
+            let Some(dv) = depm.get(&fmi.mod_id) else { continue; };
+            let dver = if fmi.version.trim_start().starts_with('$') {
+                impl_version.as_ref().unwrap_or(&fmi.version)
+            } else {
+                &fmi.version
+            };
             let mut map = HashMap::new();
             for d in dv {
                 let vd = VersionData(
@@ -76,7 +83,7 @@ impl Extractor for ExtractForge {
                 );
                 map.insert(d.mod_id.clone(), vd);
             }
-            v.push((dn.clone(), map));
+            v.push((fmi.mod_id.clone(), semver::Version::parse(dver).ok(), map));
         }
         Ok(DepMap(v))
     }
@@ -88,7 +95,7 @@ impl Extractor for ExtractForge {
     }
 }
 
-fn translate_version(mut ver: &str) -> anyhow::Result<semver::VersionReq> {
+fn translate_version(mut ver: &str) -> anyhow::Result<ParsedVersionReq> {
     ver = ver.trim();
     let start = if ver.starts_with('[') {
         Some(true)
@@ -120,8 +127,8 @@ fn translate_version(mut ver: &str) -> anyhow::Result<semver::VersionReq> {
             cc.op = if e { semver::Op::LessEq } else { semver::Op::Less };
             cv.push(cc);
         }
-        Ok(semver::VersionReq { comparators: cv })
+        Ok(ParsedVersionReq::Correct(semver::VersionReq { comparators: cv }))
     } else {
-        Ok(semver::VersionReq::parse(ver)?)
+        Ok(ParsedVersionReq::parse(ver))
     }
 }

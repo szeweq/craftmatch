@@ -37,6 +37,7 @@
     { name: 'Inheritance', href: '/all/inheritance' },
     { name: 'Complexity', href: '/all/complexity' },
     { name: 'File types', href: '/all/filetypes' },
+    { name: 'Dependencies', href: '/all/deps' },
     { name: 'Parse times', href: '/dbg/parse_times' },
   ]
   const jarActions = [

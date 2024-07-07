@@ -1,11 +1,10 @@
 use std::{collections::HashMap, io::{Read, Seek}};
 
-use crate::{jvm, loader::{VersionData, VersionType}};
-
-use super::{DepMap, Extractor, ModData};
+use crate::jvm;
+use super::{DepMap, Extractor, ModData, ParsedVersionReq, VersionData, VersionType};
 use anyhow::anyhow;
 
-type VersionReqMap = HashMap<Box<str>, semver::VersionReq>;
+type VersionReqMap = HashMap<Box<str>, ParsedVersionReq>;
 
 #[derive(serde::Deserialize)]
 pub(super) struct FabricMetadata {
@@ -52,7 +51,7 @@ impl Extractor for ExtractFabric {
                 map.insert(k.clone(), VersionData(v.clone(), VersionType::Optional));
             }
         }
-        Ok(DepMap(vec![(fm.id.clone(), map)]))
+        Ok(DepMap(vec![(fm.id.clone(), semver::Version::parse(&fm.version).ok(), map)]))
     }
     fn entries<RS: Read + Seek>(&self, zipfile: &mut zip::ZipArchive<RS>) -> anyhow::Result<jvm::ModEntries> {
         let Some(entrypoints) = self.0.entrypoints.as_ref() else {
