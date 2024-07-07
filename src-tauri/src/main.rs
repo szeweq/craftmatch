@@ -143,6 +143,15 @@ fn ws_str_index(state: State<'_, WSLock>, id: Id) -> Option<Arc<jvm::StrIndexMap
     ws_item(state, id, workspace::gather_str_index).inspect_err(|e| eprintln!("Error in ws_str_index: {e}")).ok()
 }
 #[command]
+fn ws_mod_errors(state: State<'_, WSLock>, id: Id) -> Result<Vec<workspace::FileError>, ()> {
+    state.mods().and_then(|afe| {
+        let fe = &*afe.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
+        let Some(fe) = fe.get(&id) else { anyhow::bail!("file not found") };
+        Ok(fe.errors.clone())
+    }).map_err(|e| eprintln!("Error in ws_name: {e}"))
+}
+
+#[command]
 fn ws_file_type_sizes(state: State<'_, WSLock>, mode: WSMode) -> Option<Arc<extract::ModFileTypeSizes>> {
     state.mods().and_then(|afe| {
         mode.gather_from_entries(&afe, workspace::gather_file_type_sizes)
@@ -262,7 +271,7 @@ fn main() {
             Ok(())
         })
         .invoke_handler(generate_handler![
-            auth, logout, mod_dirs, workspace, ws_files, ws_namespaces, ws_show, ws_name, ws_mod_data, ws_dep_map, ws_str_index, ws_file_type_sizes, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries, ws_recipes, ws_mod_playable, dbg_parse_times
+            auth, logout, mod_dirs, workspace, ws_files, ws_namespaces, ws_show, ws_name, ws_mod_data, ws_dep_map, ws_str_index, ws_mod_errors, ws_file_type_sizes, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries, ws_recipes, ws_mod_playable, dbg_parse_times
         ])
         .register_asynchronous_uri_scheme_protocol("raw", |app, req, resp| {
             let now = std::time::Instant::now();

@@ -54,6 +54,9 @@ export async function wsModPlayable(id: FileID) {
 export async function wsStrIndex(id: FileID) {
   return await invoke<(StrIndex | null)>('ws_str_index', {id})
 }
+export async function wsModErrors(id: FileID) {
+  return await invoke<[string, string, string][]>('ws_mod_errors', {id})
+}
 export async function wsModEntries(id: FileID) {
   return await invoke<{}>('ws_mod_entries', {id})
 }

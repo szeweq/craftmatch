@@ -1,4 +1,4 @@
-use std::{fs::{self, File}, io::{self, BufReader}, path::{Path, PathBuf}, sync::{Arc, Mutex, RwLock, RwLockReadGuard}};
+use std::{any::type_name, fs::{self, File}, io::{self, BufReader}, path::{Path, PathBuf}, sync::{Arc, Mutex, RwLock, RwLockReadGuard}, time};
 
 use indexmap::IndexMap;
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
@@ -109,19 +109,23 @@ impl AllGather for WSFiles {
 
 fn id_from_time(path: &Path) -> anyhow::Result<Id> {
     let time = fs::metadata(path)?.modified()?;
-    let d = time.duration_since(std::time::UNIX_EPOCH)?;
+    let d = time.duration_since(time::UNIX_EPOCH)?;
     Ok(Id::new(d))
 }
+
+pub type FileError = (chrono::DateTime<chrono::Local>, &'static str, Box<str>);
 
 pub struct FileInfo {
     //pub id: Uuid,
     pub path: Box<Path>,
+    pub errors: Vec<FileError>,
     datamap: TypeMap![Send + Sync]
 }
 impl FileInfo {
     pub fn new(path: PathBuf) -> Self {
         Self {
             path: path.into_boxed_path(),
+            errors: Vec::new(),
             datamap: <TypeMap![Send + Sync]>::new()
         }
     }
@@ -149,7 +153,11 @@ impl FileInfo {
     #[inline]
     fn gather<T: Send + Sync + 'static>(&mut self, gatherer: Gatherer<T>, force: bool) -> anyhow::Result<()> {
         if force || self.datamap.try_get::<Arc<T>>().is_none() {
-            self.datamap.set(Arc::new(gatherer(self)?));
+            let item = gatherer(self);
+            if let Err(e) = &item {
+                self.errors.push((chrono::Local::now(), type_name::<T>(), e.to_string().into_boxed_str()));
+            }
+            self.datamap.set(Arc::new(item?));
         }
         Ok(())
     }

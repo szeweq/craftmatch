@@ -19,6 +19,7 @@
 <h1>File: {data.name}</h1>
 <nav class="actions py-1">
   <button onclick={() => invokeWS('ws_show', {id: data.id})}>Show</button>
+  <a role="button" href="/jar/{data.id}/errors">Errors</a>
   <a role="button" href="/jar/{data.id}/strings">Strings</a>
   <a role="button" href="/jar/{data.id}/sizes">Sizes</a>
   <a role="button" href="/jar/{data.id}/filetypes">File types</a>

@@ -41,6 +41,7 @@
     { name: 'Parse times', href: '/dbg/parse_times' },
   ]
   const jarActions = [
+    { name: 'Errors', part: '/errors' },
     { name: 'Strings', part: '/strings' },
     { name: 'Sizes', part: '/sizes' },
     { name: 'File sizes', part: '/filesizes' },
