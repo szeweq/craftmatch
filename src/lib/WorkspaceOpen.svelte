@@ -5,6 +5,7 @@
   import { queryable, sortable } from "$lib/data.svelte"
   import { ws } from "$lib/workspace.svelte"
   import { invokeWS } from "$lib/ws"
+  import { routes as jarActions } from "./jarRoutes"
   import type { ToggleEventHandler } from "svelte/elements"
 
   let queryFiles = queryable(() => ws.files, x => x[1])
@@ -40,13 +41,6 @@
     { name: 'Dependencies', href: '/all/deps' },
     { name: 'Parse times', href: '/dbg/parse_times' },
   ]
-  const jarActions = [
-    { name: 'Errors', part: '/errors' },
-    { name: 'Strings', part: '/strings' },
-    { name: 'Sizes', part: '/sizes' },
-    { name: 'File sizes', part: '/filesizes' },
-    { name: 'Recipes', part: '/recipes' },
-  ]
 </script>
 <h1>Workspace opened</h1>
 <div>
@@ -77,8 +71,8 @@
 <div bind:this={activePopover} id="file-opts" popover="auto" class="rounded-xl p-1 left-unset" style={`top: ${menupos[0]}px; right: ${menupos[1]}px`} ontoggle={popoverToggle}>
   {#if lastSelected}
     <nav class="f flex-col">
-      {#each jarActions as  { name, part }}
-        <a role="button" href="/jar/{lastSelected}{part}">{name}</a>
+      {#each jarActions as { n, p }}
+        <a role="button" href="/jar/{lastSelected}{p}">{n}</a>
       {/each}
     </nav>
   {:else}

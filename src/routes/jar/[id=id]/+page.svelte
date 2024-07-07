@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { routes } from '$lib/jarRoutes'
   import { imgColors } from '$lib/gradient.svelte'
   import { invokeWS } from '$lib/ws'
   import { convertFileSrc } from '@tauri-apps/api/core'
@@ -19,14 +20,11 @@
 <h1>File: {data.name}</h1>
 <nav class="actions py-1">
   <button onclick={() => invokeWS('ws_show', {id: data.id})}>Show</button>
-  <a role="button" href="/jar/{data.id}/errors">Errors</a>
-  <a role="button" href="/jar/{data.id}/strings">Strings</a>
-  <a role="button" href="/jar/{data.id}/sizes">Sizes</a>
-  <a role="button" href="/jar/{data.id}/filetypes">File types</a>
-  <a role="button" href="/jar/{data.id}/recipes">Recipes</a>
-  <a role="button" href="/jar/{data.id}/player">Player</a>
+  {#each routes as { n, p }}
+    <a role="button" href="/jar/{data.id}{p}">{n}</a>
+  {/each}
 </nav>
-{#each data.mods as m, i (m.slug)}
+{#each data.mods as m (m.slug)}
   <div class="px-2">
     <h2>{m.name}</h2>
     <p>{m.description}</p>
