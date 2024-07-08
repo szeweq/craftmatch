@@ -24,7 +24,7 @@
   <h2>Found Minecraft directories</h2>
   <ul class="text-sm b-2 b-solid b-white/40 rounded-md list-none mx-0 my-2 text-truncate">
     {#each moddirs as d (d)}
-      <li><a class="block c-inherit hover:c-inherit! p-1 hover:bg-white/15" href="#" onclick={e => {e.preventDefault(); select = d}}>{d}</a></li>
+      <li><a class="block c-inherit hover:c-inherit! p-1 hov-effect" href="#" onclick={e => {e.preventDefault(); select = d}}>{d}</a></li>
     {/each}
   </ul>
 {/if}

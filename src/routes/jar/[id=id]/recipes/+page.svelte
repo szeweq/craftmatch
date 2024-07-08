@@ -11,7 +11,7 @@
 {#if types.length > 0}
 <div class="f">
   <div class="f flex-col w-40 text-xs gap-1 bgvar-c-bg2 rounded-md p-1 sel:bgvar-c-bg1">
-    {#each types as s (s)}<label><input type="radio" bind:group={ctype} value={s} hidden /><span class="block p-1 rounded-md hover:bg-white/15 text-ellipsis of-hidden">{s}</span></label>{/each}
+    {#each types as s (s)}<label><input type="radio" bind:group={ctype} value={s} hidden /><span class="block p-1 rounded-md hov-effect text-ellipsis of-hidden">{s}</span></label>{/each}
   </div>
   {#if ctype && data.recipes[ctype]}
     <div class="px-1">

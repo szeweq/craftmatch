@@ -17,7 +17,7 @@
   {#each q as [k, i] (k)}
     {@const info = data.info[i]}
     {@const usage = findUsage(i)}
-    <li class="p-1 f flex-col hover:bg-white/15 justify-between gap-1">
+    <li class="hov-effect p-1 f flex-col justify-between gap-1">
       <div>{k}: {info ? info[0] ?? "Unknown" : "Not available"}</div>
       {#if info}
         {@const n = Object.entries(info[1])}

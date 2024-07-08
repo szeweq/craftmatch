@@ -256,3 +256,21 @@ main .attop {
   background-color: var(--top-bg);
   transition: background-color 1s;
 }
+
+
+
+.hov-effect {
+  transition: backdrop-filter .1s ease-in-out;
+}
+.hov-effect:hover {
+  backdrop-filter: brightness(1.5) saturate(2.5);
+}
+
+@supports (-webkit-backdrop-filter: brightness(1) saturate(1)) {
+  .hov-effect {
+    transition: -webkit-backdrop-filter .1s ease-in-out;
+  }
+  .hov-effect:hover {
+    -webkit-backdrop-filter: brightness(1.5) saturate(2.5);
+  }
+}
