@@ -1,7 +1,7 @@
 use std::{collections::HashMap, io::{Read, Seek}};
 
 use crate::jvm;
-use super::{DepMap, Extractor, ModData, ParsedVersionReq, VersionData, VersionType};
+use super::{lenient_version, DepMap, Extractor, ModData, ParsedVersionReq, VersionData, VersionType};
 use anyhow::anyhow;
 
 type VersionReqMap = HashMap<Box<str>, ParsedVersionReq>;
@@ -51,7 +51,7 @@ impl Extractor for ExtractFabric {
                 map.insert(k.clone(), VersionData(v.clone(), VersionType::Optional));
             }
         }
-        Ok(DepMap(vec![(fm.id.clone(), semver::Version::parse(&fm.version).ok(), map)]))
+        Ok(DepMap(vec![(fm.id.clone(), lenient_version(&fm.version), map)]))
     }
     fn entries<RS: Read + Seek>(&self, zipfile: &mut zip::ZipArchive<RS>) -> anyhow::Result<jvm::ModEntries> {
         let Some(entrypoints) = self.0.entrypoints.as_ref() else {

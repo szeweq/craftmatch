@@ -2,7 +2,7 @@ use std::{collections::HashMap, io::{Read, Seek}};
 
 use crate::{jvm, loader::{VersionData, VersionType}};
 
-use super::{DepMap, Extractor, ModData, ParsedVersionReq};
+use super::{lenient_version, DepMap, Extractor, ModData, ParsedVersionReq};
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -83,7 +83,7 @@ impl Extractor for ExtractForge {
                 );
                 map.insert(d.mod_id.clone(), vd);
             }
-            v.push((fmi.mod_id.clone(), semver::Version::parse(dver).ok(), map));
+            v.push((fmi.mod_id.clone(), lenient_version(dver), map));
         }
         Ok(DepMap(v))
     }

@@ -1,7 +1,7 @@
 use std::{collections::HashMap, io::{BufRead, BufReader, Read, Seek}};
 use anyhow::anyhow;
 
-use crate::{iter_extend, jvm, slice::ExtendSelf};
+use crate::{ext::{IndexStr, Indexer}, iter_extend, jvm, slice::ExtendSelf};
 
 pub mod fabric;
 pub mod forge;
@@ -111,6 +111,30 @@ impl ExtendSelf for DepMap {
 }
 iter_extend!(DepMap);
 
+#[derive(serde::Serialize)]
+pub struct DepMapIndexed(Indexer, Vec<Option<(Option<semver::Version>, HashMap<usize, VersionData>)>>);
+impl From<&DepMap> for DepMapIndexed {
+    fn from(x: &DepMap) -> Self {
+        let mut idxr = Indexer::default();
+        let mut v = Vec::with_capacity(x.0.len());
+        v.fill(None);
+        for (n, o, d) in &x.0 {
+            let i = idxr.find_or_insert(n);
+            if i.1 >= v.len() { v.resize(i.1 + 1, None); }
+            v[i.1] = Some((o.clone(), d.iter().map(|(n, v)| (idxr.find_or_insert(n).num(), v.clone())).collect::<HashMap<_, _>>()));
+        }
+        let mut iiv = idxr.iter().enumerate().map(|(i, x)| (i, x.1)).collect::<Vec<_>>();
+        iiv.sort_by_key(|x| x.1);
+        let ilv = idxr.iter()
+            .map(|x| {
+                let (o, d) = v.get_mut(x.1).map(std::mem::take).unwrap_or_default()?;
+                let d = d.into_iter().map(|(k, v)| (iiv[k.1].0, v)).collect();
+                Some((o, d))
+            }).collect();
+        Self(idxr, ilv)
+    }
+}
+
 #[derive(Clone)]
 pub enum ParsedVersionReq {
     Correct(semver::VersionReq),
@@ -182,4 +206,20 @@ impl <R: Read> Read for FlatReader<R> {
         });
         Ok(len)
     }
+}
+
+pub fn lenient_version(s: &str) -> Option<semver::Version> {
+    semver::Version::parse(s).map_or_else(|_| {
+        if let Ok(c) = semver::Comparator::parse(s) {
+            Some(semver::Version {
+                major: c.major,
+                minor: c.minor.unwrap_or_default(),
+                patch: c.patch.unwrap_or_default(),
+                pre: c.pre,
+                build: semver::BuildMetadata::EMPTY
+            })
+        } else {
+            None
+        }
+    }, Some)
 }

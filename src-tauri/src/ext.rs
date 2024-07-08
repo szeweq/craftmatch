@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, ffi::OsStr, io::{Read, Seek}, path::Path};
+use std::{collections::VecDeque, ffi::OsStr, hash, io::{Read, Seek}, marker::PhantomData, ops::Deref, path::Path, sync::Arc};
 
 use serde::Serialize;
 use zip::{read::ZipFile, result::{ZipError, ZipResult}, ZipArchive};
@@ -166,3 +166,60 @@ impl ExtendSelf for Inheritance {
     }
 }
 iter_extend!(Inheritance);
+
+pub struct IndexStr<T: ?Sized>(pub Arc<str>, pub usize, PhantomData<T>);
+impl IndexStr<str> {
+    pub fn num(self) -> IndexStr<usize> {
+        IndexStr(self.0, self.1, PhantomData)
+    }
+}
+
+impl <T> PartialEq for IndexStr<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.as_ref() == other.0.as_ref()
+    }
+}
+impl <T> Eq for IndexStr<T> {}
+impl <T> hash::Hash for IndexStr<T> {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.0.as_ref().hash(state);
+    }
+}
+impl <T: ?Sized> Clone for IndexStr<T> {
+    fn clone(&self) -> Self {
+        Self(Arc::clone(&self.0), self.1, PhantomData)
+    }
+}
+
+impl serde::Serialize for IndexStr<str> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer {
+        serializer.serialize_str(self.0.as_ref())
+    }
+}
+impl serde::Serialize for IndexStr<usize> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer {
+        serializer.serialize_u64(self.1 as u64)
+    }
+}
+
+#[repr(transparent)]
+#[derive(Default, serde::Serialize)]
+pub struct Indexer(Vec<IndexStr<str>>);
+impl Indexer {
+    pub fn find_or_insert(&mut self, s: &str) -> IndexStr<str> {
+        let i = match self.0.binary_search_by_key(&s, |x| x.0.as_ref()) {
+            Ok(i) => i,
+            Err(i) => {
+                self.0.insert(i, IndexStr(Arc::from(s), self.0.len(), PhantomData));
+                i
+            }
+        };
+        self.0[i].clone()
+    }
+}
+impl Deref for Indexer {
+    type Target = [IndexStr<str>];
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}

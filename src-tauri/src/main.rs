@@ -159,10 +159,10 @@ fn ws_file_type_sizes(state: State<'_, WSLock>, mode: WSMode) -> Option<Arc<extr
 }
 
 #[command]
-fn ws_dep_map(state: State<'_, WSLock>, mode: WSMode) -> Option<Arc<loader::DepMap>> {
+fn ws_dep_map(state: State<'_, WSLock>, mode: WSMode) -> Option<Arc<loader::DepMapIndexed>> {
     state.mods().and_then(|afe| {
         mode.gather_from_entries(&afe, workspace::gather_dep_map)
-    }).inspect_err(|e| eprintln!("Error in ws_dep_map: {e}")).ok()
+    }).map(|x| Arc::new(x.as_ref().into())).inspect_err(|e| eprintln!("Error in ws_dep_map: {e}")).ok()
 }
 #[command]
 fn ws_content_sizes(state: State<'_, WSLock>, mode: WSMode) -> Option<Arc<extract::ModContentSizes>> {
