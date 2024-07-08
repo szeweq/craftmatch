@@ -58,7 +58,7 @@
 </section>
 <ul class="text-sm b-2 b-solid b-white/40 rounded-md list-none mx-0 my-2 text-truncate">
   {#each sortFiles as [id, f, n] (id)}
-    <li class="f hover:bg-white/20 justify-between gap-1 px-1 items-center">
+    <li class="f hover:bg-white/15 justify-between gap-1 px-1 items-center">
       <a class=":uno: flex-1 block hover:c-inherit! p-1" href={`/jar/${id}`}>
         <div>{f}</div>
         <div class="text-xs">{kbfmt(n / 1024)}</div>

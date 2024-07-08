@@ -47,7 +47,7 @@
       <h3>Dependencies</h3>
       <ul class="text-sm b-2 b-solid b-white/40 rounded-md list-none mx-0 my-2 text-truncate">
         {#each Object.entries(data.deps[data.depNames.indexOf(m.slug)][1]) ?? [] as [d, [v, r]] (d)}
-          <li class="hover:bg-white/20 justify-between p-1 items-center">{data.depNames[d]}: {v} ({r})</li>
+          <li class="hover:bg-white/15 justify-between p-1 items-center">{data.depNames[d]}: {v} ({r})</li>
         {/each}
       </ul>
     </div>

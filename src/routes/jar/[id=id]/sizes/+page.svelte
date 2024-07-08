@@ -38,7 +38,7 @@
 {#if data.sizes != null}
   <div class="f justify-center items-center bgvar-c-bg2 rounded-md mx-auto my-2 p-1 gap-1 text-sm sel:bgvar-c-bg1">
     {#each byType as bt, i}
-      <label><input type="radio" bind:group={by} value={i} hidden><span class="inline-block p-1 rounded-md hover:bg-white/20">{bt}</span></label>
+      <label><input type="radio" bind:group={by} value={i} hidden><span class="inline-block p-1 rounded-md hover:bg-white/15">{bt}</span></label>
     {/each}
   </div>
   <div class="f gap-1 my-4 items-stretch justify-between">
