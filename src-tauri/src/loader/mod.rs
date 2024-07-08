@@ -43,7 +43,7 @@ impl Extractor for ExtractLoader {
 
 fn get_extractor<RS: Read + Seek>(zip: &mut zip::ZipArchive<RS>) -> anyhow::Result<ExtractLoader> {
     Ok(if let Some(ix) = zip.index_for_name("fabric.mod.json") {
-        Ld::Fabric(fabric::ExtractFabric(serde_json::from_reader(zip.by_index(ix)?)?))
+        Ld::Fabric(fabric::ExtractFabric(json_safe_parse(zip.by_index(ix)?)?))
     } else if let Some(ix) = zip.index_for_name("META-INF/mods.toml") {
         let mut mf = zip.by_index(ix)?;
         let mut s = String::with_capacity(mf.size() as usize);
@@ -146,7 +146,7 @@ pub fn extract_mod_entries<RS: Read + Seek>(zipfile: &mut zip::ZipArchive<RS>, m
     match mtd {
         ModTypeData::Fabric(_) => {
             if let Some(ix) = zipfile.index_for_name("fabric.mod.json") {
-                let manifest: serde_json::Map<String, serde_json::Value> = serde_json::from_reader(zipfile.by_index(ix)?)?;
+                let manifest: serde_json::Map<String, serde_json::Value> = json_safe_parse(zipfile.by_index(ix)?)?;
                 let entrypoints = manifest.get("entrypoints")
                     .and_then(|v| v.as_object()?.get("main")?.as_array())
                     .ok_or_else(|| anyhow!("No entrypoints in fabric.mod.json"))?
@@ -164,5 +164,22 @@ pub fn extract_mod_entries<RS: Read + Seek>(zipfile: &mut zip::ZipArchive<RS>, m
             let classes = jvm::scan_forge_mod_entries(zipfile, &slugs)?;
             Ok(jvm::ModEntries { classes })
         }
+    }
+}
+
+fn json_safe_parse<R: Read, T: serde::de::DeserializeOwned>(r: R) -> serde_json::Result<T> {
+    serde_json::from_reader(FlatReader(r))
+}
+
+#[repr(transparent)]
+struct FlatReader<R>(R);
+impl <R: Read> Read for FlatReader<R> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        let len = self.0.read(buf)?;
+        buf[..len].iter_mut().for_each(|b| match *b {
+            b'\r' | b'\n' => *b = b' ',
+            _ => {}
+        });
+        Ok(len)
     }
 }
