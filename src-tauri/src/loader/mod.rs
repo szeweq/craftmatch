@@ -1,7 +1,7 @@
 use std::{collections::HashMap, io::{BufRead, BufReader, Read, Seek}};
 use anyhow::anyhow;
 
-use crate::{ext::{IndexStr, Indexer}, iter_extend, jvm, slice::ExtendSelf};
+use crate::{ext::Indexer, iter_extend, jvm, slice::ExtendSelf};
 
 pub mod fabric;
 pub mod forge;
@@ -101,7 +101,7 @@ pub enum VersionType {
     Optional
 }
 
-#[derive(Default, serde::Serialize)]
+#[derive(Default)]
 pub struct DepMap(Vec<(Box<str>, Option<semver::Version>, HashMap<Box<str>, VersionData>)>);
 
 impl ExtendSelf for DepMap {
