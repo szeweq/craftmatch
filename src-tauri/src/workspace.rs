@@ -113,7 +113,11 @@ fn id_from_time(path: &Path) -> anyhow::Result<Id> {
     Ok(Id::new(d))
 }
 
-pub type FileError = (chrono::DateTime<chrono::Local>, &'static str, Box<str>);
+pub type FileError = (f64, &'static str, Box<str>);
+
+fn now_seconds() -> f64 {
+    time::SystemTime::now().duration_since(time::UNIX_EPOCH).map_or(0.0, time::Duration::as_secs_f64)
+}
 
 pub struct FileInfo {
     //pub id: Uuid,
@@ -155,7 +159,7 @@ impl FileInfo {
         if force || self.datamap.try_get::<Arc<T>>().is_none() {
             let item = gatherer(self);
             if let Err(e) = &item {
-                self.errors.push((chrono::Local::now(), type_name::<T>(), e.to_string().into_boxed_str()));
+                self.errors.push((now_seconds(), type_name::<T>(), e.to_string().into_boxed_str()));
             }
             self.datamap.set(Arc::new(item?));
         }
