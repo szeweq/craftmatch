@@ -116,7 +116,7 @@ fn id_from_time(path: &Path) -> anyhow::Result<Id> {
 pub type FileError = (f64, &'static str, Box<str>);
 
 fn now_seconds() -> f64 {
-    time::SystemTime::now().duration_since(time::UNIX_EPOCH).map_or(0.0, time::Duration::as_secs_f64)
+    time::SystemTime::now().duration_since(time::UNIX_EPOCH).map_or(0.0, |d| d.as_secs_f64())
 }
 
 pub struct FileInfo {
