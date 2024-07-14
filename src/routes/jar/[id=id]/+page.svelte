@@ -2,7 +2,7 @@
   import { routes } from '$lib/jarRoutes'
   import { imgColors } from '$lib/gradient.svelte'
   import { invokeWS } from '$lib/ws'
-  import { convertFileSrc } from '@tauri-apps/api/core'
+  import srv from '$lib/srv'
 
   const versionRegexp = /^(\d+)(\.(\d+)(\.(\d+))?)?/
   let {data}: { data: import('./$types').PageData } = $props()
@@ -11,7 +11,7 @@
     e.currentTarget.setAttribute("is-broken", "")
   }
   function logoUrl(path: string) {
-    return path ? convertFileSrc(data.id, 'raw') + '/' + path : ""
+    return path ? srv.url(`/raw/${data.id}/${path}`) : ""
   }
   let gradient = imgColors(() => img)
   $effect(() => gradient.compute())

@@ -11,10 +11,11 @@ mod slice;
 mod imp;
 mod id;
 mod loader;
+mod srv;
 
 use std::{borrow::Cow, collections::HashMap, fs::File, io, sync::Arc, time::Instant};
 use id::Id;
-use tauri::{command, generate_context, generate_handler, http::Response, Manager, State};
+use tauri::{command, generate_context, generate_handler, http::Response, Emitter, Listener, Manager, State};
 use workspace::{Gatherer, WSLock, WSMode};
 
 use crate::workspace::AllGather;
@@ -251,12 +252,19 @@ fn dbg_parse_times() -> HashMap<Box<str>, f64> {
     m.iter().map(|(k, v)| (k.clone(), v.as_secs_f64())).collect()
 }
 
+#[command]
+fn srv_port(state: State<'_, srv::Server>) -> u16 {
+    state.inner().port
+}
+
 fn main() {
     tauri::Builder::default()
         .manage(workspace::WSLock::new())
+        .manage(srv::Server::new().expect("Failed to setup server"))
         .manage(cm_auth::GithubClient::setup().expect("Failed to setup github client"))
         .setup(|app| {
             let wapp = app.handle().clone();
+            let wss = app.state::<WSLock>().inner().clone();
             app.listen("load", move |_| {
                 let ws = wapp.state::<WSLock>().inner().clone();
                 if let Err(e) = ws.locking(|ws| {
@@ -268,10 +276,12 @@ fn main() {
                     Ok(())
                 }) { eprintln!("Error in load: {e}"); }
             });
+            let server = app.state::<srv::Server>().inner().clone();
+            server.run(wss);
             Ok(())
         })
         .invoke_handler(generate_handler![
-            auth, logout, mod_dirs, workspace, ws_files, ws_namespaces, ws_show, ws_name, ws_mod_data, ws_dep_map, ws_str_index, ws_mod_errors, ws_file_type_sizes, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries, ws_recipes, ws_mod_playable, dbg_parse_times
+            auth, logout, mod_dirs, workspace, ws_files, ws_namespaces, ws_show, ws_name, ws_mod_data, ws_dep_map, ws_str_index, ws_mod_errors, ws_file_type_sizes, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries, ws_recipes, ws_mod_playable, dbg_parse_times, srv_port
         ])
         .register_asynchronous_uri_scheme_protocol("raw", |app, req, resp| {
             let now = std::time::Instant::now();

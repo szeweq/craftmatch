@@ -1,5 +1,5 @@
 <script lang="ts">
-import { convertFileSrc } from '@tauri-apps/api/core';
+import srv from '$lib/srv'
 
 let {data}: { data: import('./$types').PageData } = $props()
 let selected = $state(-1)
@@ -16,6 +16,6 @@ let selected = $state(-1)
 <div class="stick-bottom left-[calc(var(--s-aside)+1rem)] right-4">
   {#if selected >= 0 && selected < data.files.length}
     {@const m = data.files[selected]}
-    <audio class="w-full" controls autoplay src={convertFileSrc(data.id, 'raw') + '/' + m} preload="auto"></audio>
+    <audio class="w-full" controls autoplay src={srv.url(`/raw/${data.id}/${m}`)} preload="auto"></audio>
   {/if}
 </div>
