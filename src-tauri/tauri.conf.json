@@ -22,7 +22,8 @@
     ],
     "security": {
       "csp": {
-        "default-src": "'self' localhost raw: raw.localhost"
+        "default-src": "'self' localhost ipc.localhost",
+        "img-src": "'self' data: localhost"
       }
     }
   },
