@@ -9,11 +9,9 @@ import { goto } from "$app/navigation"
 import AuthModal from "$lib/AuthModal.svelte"
 import { user } from "$lib/auth.svelte"
 import Modal from "$lib/Modal.svelte"
-import srv from "$lib/srv"
 let {children} = $props()
 let backEnabled = $state(false)
 $effect.pre(() => page.subscribe(p => backEnabled = p.url.pathname !== "/"))
-$effect.pre(() => srv.sync())
 let openDialog = $state(0)
 const closeDialog = () => openDialog = 0
 </script>
