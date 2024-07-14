@@ -23,7 +23,8 @@
     "security": {
       "csp": {
         "default-src": "'self' localhost ipc.localhost",
-        "img-src": "'self' data: localhost"
+        "img-src": "'self' data: localhost:*",
+        "media-src": "'self' localhost:*"
       }
     }
   },

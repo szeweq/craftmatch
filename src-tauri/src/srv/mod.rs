@@ -20,6 +20,7 @@ impl Server {
             if let Err(e) = rt::block_on(run_server(self.port, ws)) {
                 eprintln!("Server error: {e}");
             }
+            self.running.store(false, std::sync::atomic::Ordering::Relaxed);
         });
     }
 }
@@ -57,12 +58,11 @@ async fn get_raw_data(
 }
 
 pub async fn run_server(port: u16, ws: WSLock) -> anyhow::Result<()> {
-    let port = select_port().ok_or_else(|| anyhow::anyhow!("failed to select port"))?;
     println!("Running on port {port}");
     let addr = SocketAddrV4::new(Ipv4Addr::LOCALHOST, port);
     let listener = tokio::net::TcpListener::bind(addr).await?;
     let app = Router::new()
-        .route("/raw/:id/:path", routing::get(get_raw_data))
+        .route("/raw/:id/*path", routing::get(get_raw_data))
         .with_state(ws);
     Ok(axum::serve(listener, app).await?)
 }
