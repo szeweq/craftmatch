@@ -22,7 +22,7 @@
     ],
     "security": {
       "csp": {
-        "default-src": "'self' raw: raw.localhost"
+        "default-src": "'self' localhost raw: raw.localhost"
       }
     }
   },
