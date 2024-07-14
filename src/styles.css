@@ -8,6 +8,7 @@ body {
   height: 100dvh;
   font-size: .875rem;
 }
+#app { display: contents; }
 
 ::-webkit-scrollbar {
   height: 0.5rem;
