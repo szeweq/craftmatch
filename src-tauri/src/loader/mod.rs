@@ -96,7 +96,6 @@ pub struct VersionData(ParsedVersionReq, VersionType);
 #[derive(Clone, Copy, serde::Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum VersionType {
-    Provided,
     Required,
     Optional
 }
