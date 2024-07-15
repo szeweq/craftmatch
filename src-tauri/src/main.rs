@@ -281,43 +281,10 @@ fn main() {
             Ok(())
         })
         .invoke_handler(generate_handler![
-            auth, logout, mod_dirs, workspace, ws_files, ws_namespaces, ws_show, ws_name, ws_mod_data, ws_dep_map, ws_str_index, ws_mod_errors, ws_file_type_sizes, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries, ws_recipes, ws_mod_playable, dbg_parse_times, srv_port
+            auth, logout, mod_dirs, workspace,
+            ws_files, ws_namespaces, ws_show, ws_name, ws_mod_data, ws_dep_map, ws_str_index, ws_mod_errors, ws_file_type_sizes, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries, ws_recipes, ws_mod_playable,
+            dbg_parse_times, srv_port
         ])
-        .register_asynchronous_uri_scheme_protocol("raw", |app, req, resp| {
-            let now = std::time::Instant::now();
-            let ws = app.state::<WSLock>().inner().clone();
-            rt::spawn(async move {
-                let rb = Response::builder().header("Access-Control-Allow-Origin", "*");
-                resp.respond(match get_raw(&ws, req.uri().path()) {
-                    Some(Ok(data)) => rb.header("Content-Length", data.len()).body(Cow::Owned(data)),
-                    None => rb.status(404).body(Cow::Borrowed(&[][..])),
-                    Some(Err(e)) => {
-                        eprintln!("{e}");
-                        rb.status(500).body(Cow::Borrowed(&[][..]))
-                    }
-                }.unwrap());
-                println!("Fetched in {:?} -> {}", now.elapsed(), req.uri().path());
-            });
-        })
         .run(generate_context!())
         .expect("error while running tauri application");
-}
-
-#[inline]
-fn get_raw(ws: &WSLock, uri_path: &str) -> Option<anyhow::Result<Vec<u8>>> {
-    let (s_id, path) = uri_path[1..].split_once('/')?;
-    let id = s_id.parse().ok()?;
-    let bp = ws.locking(|ws| ws.entry_path(id)).ok()?;
-    let file = match File::open(bp) {
-        Ok(x) => x,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            return None;
-        }
-        Err(e) => { return Some(Err(e.into())) }
-    };
-    let mut zip = match zip::ZipArchive::new(io::BufReader::new(file)) {
-        Ok(x) => x,
-        Err(e) => { return Some(Err(e.into())) }
-    };
-    extract::get_raw_data(&mut zip, path).map(Ok)
 }
