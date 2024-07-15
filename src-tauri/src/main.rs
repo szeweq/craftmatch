@@ -12,10 +12,11 @@ mod imp;
 mod id;
 mod loader;
 mod srv;
+mod zipext;
 
-use std::{borrow::Cow, collections::HashMap, fs::File, io, sync::Arc, time::Instant};
+use std::{collections::HashMap, sync::Arc, time::Instant};
 use id::Id;
-use tauri::{command, generate_context, generate_handler, http::Response, Emitter, Listener, Manager, State};
+use tauri::{command, generate_context, generate_handler, Emitter, Listener, Manager, State};
 use workspace::{Gatherer, WSLock, WSMode};
 
 use crate::workspace::AllGather;

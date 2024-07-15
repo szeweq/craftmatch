@@ -1,7 +1,7 @@
 use std::{fs, io, net::{Ipv4Addr, SocketAddrV4}, sync::{atomic::AtomicBool, Arc}};
 
-use axum::{body::Body, extract::{Path, State}, http::StatusCode, response::{IntoResponse, Response}, routing, Router};
-use crate::{id::Id, rt, workspace::WSLock};
+use axum::{body::Body, extract::{Path, State}, http::{header, HeaderValue, StatusCode}, response::{IntoResponse, Response}, routing, Router};
+use crate::{id::Id, rt, workspace::WSLock, zipext::ZipExt};
 
 #[derive(Clone)]
 pub struct Server {
@@ -43,22 +43,23 @@ async fn get_raw_data(
     Path((id, path)): Path<(Id, String)>,
     State(ws): State<WSLock>,
 ) -> Response {
-    let rb = Response::builder().header("Access-Control-Allow-Origin", "*");
-    match get_raw(&ws, id, &path) {
-        Some(Ok(data)) => rb.header("Content-Length", data.len()).body(Body::from(data)),
-        None => rb.status(404).body(Body::empty()),
+    let mut hm = header::HeaderMap::new();
+    hm.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"));
+    let (status, body) = match get_raw(&ws, id, &path) {
+        Some(Ok(data)) => {
+            hm.insert(header::CACHE_CONTROL, HeaderValue::from_static("max-age=31536000"));
+            (StatusCode::OK, Body::from(data))
+        }
+        None => (StatusCode::NOT_FOUND, Body::empty()),
         Some(Err(e)) => {
             eprintln!("{e}");
-            rb.status(500).body(Body::empty())
+            (StatusCode::INTERNAL_SERVER_ERROR, Body::empty())
         }
-    }.unwrap_or_else(|e| {
-        eprintln!("Could not get raw data: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR.into_response()
-    })
+    };
+    (status, hm, body).into_response()
 }
 
 pub async fn run_server(port: u16, ws: WSLock) -> anyhow::Result<()> {
-    println!("Running on port {port}");
     let addr = SocketAddrV4::new(Ipv4Addr::LOCALHOST, port);
     let listener = tokio::net::TcpListener::bind(addr).await?;
     let app = Router::new()
@@ -80,5 +81,5 @@ fn get_raw(ws: &WSLock, id: Id, path: &str) -> Option<anyhow::Result<Vec<u8>>> {
         Ok(x) => x,
         Err(e) => { return Some(Err(e.into())) }
     };
-    crate::extract::get_raw_data(&mut zip, path).map(Ok)
+    zip.read_mem(path)
 }

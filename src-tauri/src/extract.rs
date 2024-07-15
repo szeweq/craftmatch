@@ -173,14 +173,6 @@ pub fn gather_tags<RS: Read + Seek>(mut zar: zip::ZipArchive<RS>) -> Result<Tags
     })
 }
 
-pub fn get_raw_data<RS: Read + Seek>(zip: &mut zip::ZipArchive<RS>, name: &str) -> Option<Vec<u8>> {
-    let idx = zip.index_for_name(name)?;
-    let mut file = zip.by_index(idx).ok()?;
-    let mut buf = vec![0; file.size() as usize];
-    file.read_exact(&mut buf).ok()?;
-    Some(buf)
-}
-
 #[derive(Deserialize)]
 pub struct RecipeData {
     #[serde(rename = "type")]
