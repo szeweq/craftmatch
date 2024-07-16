@@ -117,14 +117,9 @@ fn ws_item<T: Send + Sync + 'static>(state: State<'_, WSLock>, id: Id, gfn: Gath
 
 #[command]
 async fn ws_show(state: State<'_, WSLock>, id: Id) -> Result<(), ()> {
-    state.mods().and_then(|afe| {
-        let fe = &*afe.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
-        let path = match fe.get(&id) {
-            Some(fi) => fi.path.clone(),
-            None => anyhow::bail!("file path not found"),
-        };
-        Ok(opener::reveal(path)?)
-    }).map_err(|e| eprintln!("Error in ws_show: {e}"))
+    state.locking(|ws| ws.entry_path(id))
+        .and_then(|path| Ok(opener::reveal(path)?))
+        .map_err(|e| eprintln!("Error in ws_show: {e}"))
 }
 
 #[command]
