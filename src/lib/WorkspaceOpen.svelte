@@ -61,7 +61,7 @@
     <li class="f hov-effect justify-between gap-1 px-1 items-center">
       <a class=":uno: flex-1 block hover:c-inherit! p-1" href={`/jar/${id}`}>
         <div>{f}</div>
-        <div class="text-xs">{kbfmt(n / 1024)}</div>
+        <div class="text-xs c-white/60">{kbfmt(n / 1024)}</div>
       </a>
       <button class="btn-icon before:i-ms-open-in-new" onclick={() => invokeWS('ws_show', {id})}></button>
       <button class="btn-icon before:i-ms-more-vert" popovertarget="file-opts" onclick={e => showMenu(e.currentTarget, id)}></button>
