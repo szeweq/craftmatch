@@ -1,6 +1,6 @@
 use std::{collections::HashMap, io::{Read, Seek}};
 
-use crate::{jvm, loader::{VersionData, VersionType}};
+use crate::{jvm, loader::{VersionData, VersionType}, zipext::FileMap};
 
 use super::{lenient_version, DepMap, Extractor, ModData, ParsedVersionReq};
 
@@ -87,10 +87,10 @@ impl Extractor for ExtractForge {
         }
         Ok(DepMap(v))
     }
-    fn entries<RS: Read + Seek>(&self, zipfile: &mut zip::ZipArchive<RS>) -> anyhow::Result<jvm::ModEntries> {
+    fn entries<RS: Read + Seek>(&self, fm: &FileMap, rs: &mut RS) -> anyhow::Result<jvm::ModEntries> {
         let mi = self.mod_info();
         let slugs = mi.iter().map(|m| &*m.slug).collect::<Box<_>>();
-        let classes = jvm::scan_forge_mod_entries(zipfile, &slugs)?;
+        let classes = jvm::scan_forge_mod_entries(&slugs, fm, rs)?;
         Ok(jvm::ModEntries { classes })
     }
 }

@@ -46,6 +46,7 @@ semver = {version = "1.0", features = ["serde"] }
 chrono = {version = "0.4", features = ["serde"] }
 axum = "0.7"
 portpicker = "0.1"
+flate2 = "1.0"
 
 cm-auth = {path = "pkg-auth"}
 cm-jclass = {path = "pkg-jclass"}

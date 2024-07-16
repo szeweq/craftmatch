@@ -3,7 +3,7 @@ use std::{collections::HashMap, io::{Read, Seek}};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
-use crate::{ext::{self, Extension}, slice::{iter_extend, ExtendSelf}};
+use crate::{ext::Extension, slice::{iter_extend, ExtendSelf}, zipext::FileMap};
 
 #[derive(Serialize, Default)]
 pub struct ModFileTypeSizes(HashMap<Box<str>, [usize; 3]>);
@@ -40,42 +40,38 @@ impl ExtendSelf for ModContentSizes {
 }
 iter_extend!(ModContentSizes);
 
-pub fn compute_file_type_sizes<RS: Read + Seek>(zar: &mut zip::ZipArchive<RS>) -> Result<ModFileTypeSizes> {
-    ext::zip_file_iter(zar).try_fold(ModFileTypeSizes::default(), |mut mfts, file| {
-        let file = file?;
-        let fname = file.name();
-        let ext = match fname.rsplit_once('.') {
+pub fn compute_file_type_sizes(fm: &FileMap) -> Result<ModFileTypeSizes> {
+    fm.iter().try_fold(ModFileTypeSizes::default(), |mut mfts, (name, fe)| {
+        let ext = match name.rsplit_once('.') {
             None | Some(("", _) | (_, "")) => "".into(),
             Some((_, x)) => x.to_lowercase().into_boxed_str()
         };
         let op = mfts.0.entry(ext).or_default();
         op[0] += 1;
-        op[1] += file.size() as usize;
-        op[2] += file.compressed_size() as usize;
+        op[1] += fe.size() as usize;
+        op[2] += fe.compressed() as usize;
         Ok(mfts)
     })
 }
 
-pub fn compute_mod_content_sizes<RS: Read + Seek>(zar: &mut zip::ZipArchive<RS>) -> Result<ModContentSizes> {
-    ext::zip_file_iter(zar).try_fold(ModContentSizes::default(), |mut mcs, file| {
-        let file = file?;
-        let fname = file.name();
-        let op = match fname.split_once('/').map(|x| x.0) {
+pub fn compute_mod_content_sizes(fm: &FileMap) -> Result<ModContentSizes> {
+    fm.iter().try_fold(ModContentSizes::default(), |mut mcs, (name, fe)| {
+        let op = match name.split_once('/').map(|x| x.0) {
             Some("assets") => &mut mcs.assets,
             Some("data") => &mut mcs.data,
-            Some("META-INF") => match Extension::from_path(fname) {
+            Some("META-INF") => match Extension::from_path(name.as_ref()) {
                 Extension::Toml | Extension::Json | Extension::Properties | Extension::Mf => &mut mcs.meta,
                 _ => &mut mcs.other
             }
-            _ => match Extension::from_path(fname) {
+            _ => match Extension::from_path(name.as_ref()) {
                 Extension::Class => &mut mcs.classes,
                 Extension::Json => &mut mcs.meta,
                 _ => &mut mcs.other
             }
         };
         op[0] += 1;
-        op[1] += file.size() as usize;
-        op[2] += file.compressed_size() as usize;
+        op[1] += fe.size() as usize;
+        op[2] += fe.compressed() as usize;
         Ok(mcs)
     })
 }
@@ -145,19 +141,17 @@ impl TagEntry {
     }
 }
 
-pub fn gather_tags<RS: Read + Seek>(mut zar: zip::ZipArchive<RS>) -> Result<TagsList> {
-    ext::zip_file_ext_iter(&mut zar, Extension::Json).try_fold(TagsList::new(), |mut tl, file| {
-        let mut file = file?;
-        let filename = file.name().to_string();
-        if let Some((ns, frest)) = filename.strip_prefix("data/").and_then(|fen| fen.split_once('/')) {
+pub fn gather_tags<RS: Read + Seek>(fm: &FileMap, rs: &mut RS) -> Result<TagsList> {
+    fm.iter().filter(|(k, _)| Extension::Json.matches(k.as_ref())).try_fold(TagsList::new(), |mut tl, (name, file)| {
+        if let Some((ns, frest)) = name.strip_prefix("data/").and_then(|fen| fen.split_once('/')) {
             if let Some((ptyp, prest)) = frest.strip_prefix("tags/").and_then(|fen| fen.split_once('/')) {
                 let tname = &prest[..prest.len() - 5];
                 let pe = tl.0.entry(ptyp.into()).or_default();
                 let nx = format!("{ns}:{tname}").into_boxed_str();
-                let tags: JsonTagsList = match serde_json::from_reader(&mut file) {
+                let tags: JsonTagsList = match serde_json::from_reader(file.reader(rs)?) {
                     Ok(t) => t,
                     Err(e) => {
-                        eprintln!("In {filename}: {e}");
+                        eprintln!("In {name}: {e}");
                         return Ok(tl)
                     }
                 };
@@ -194,18 +188,16 @@ impl <R> FromIterator<R> for RecipeTypeMap where R: AsRef<Self> {
     }
 }
 
-pub fn gather_recipes<RS: Read + Seek>(zipfile: &mut zip::ZipArchive<RS>) -> Result<RecipeTypeMap> {
-    let recipes = ext::zip_file_ext_iter(zipfile, Extension::Json).try_fold(HashMap::<Box<str>, Vec<Box<str>>>::new(), |mut recipes, file| {
-        let mut file = file?;
-        let filename = file.name().to_string();
-        if let Some((ns, frest)) = filename.strip_prefix("data/").and_then(|fen| fen.split_once('/')) {
+pub fn gather_recipes<RS: Read + Seek>(fm: &FileMap, rs: &mut RS) -> Result<RecipeTypeMap> {
+    let recipes = fm.iter().filter(|(k, _)| Extension::Json.matches(k.as_ref())).try_fold(HashMap::<Box<str>, Vec<Box<str>>>::new(), |mut recipes, (name, fe)| {
+        if let Some((ns, frest)) = name.strip_prefix("data/").and_then(|fen| fen.split_once('/')) {
             if let Some(pname) = frest.strip_prefix("recipes/") {
                 let tname = &pname[..pname.len() - 5];
                 let nx = format!("{ns}:{tname}").into_boxed_str();
-                let recipe: RecipeData = match serde_json::from_reader(&mut file) {
+                let recipe: RecipeData = match serde_json::from_reader(fe.reader(rs)?) {
                     Ok(t) => t,
                     Err(e) => {
-                        eprintln!("In {filename}: {e}");
+                        eprintln!("In {name}: {e}");
                         return anyhow::Ok(recipes)
                     }
                 };
@@ -220,8 +212,8 @@ pub fn gather_recipes<RS: Read + Seek>(zipfile: &mut zip::ZipArchive<RS>) -> Res
 #[derive(Serialize)]
 pub struct PlayableFiles(Box<[Box<str>]>);
 
-pub fn gather_playable_files<RS: Read + Seek>(zar: &zip::ZipArchive<RS>) -> PlayableFiles {
-    let mut files = Extension::Ogg.names_iter(zar).map(Box::from).collect::<Vec<_>>();
+pub fn gather_playable_files(fm: &FileMap) -> PlayableFiles {
+    let mut files = fm.keys().filter(|&x| Extension::Ogg.matches(x.as_ref())).cloned().collect::<Vec<_>>();
     files.sort();
     PlayableFiles(files.into_boxed_slice())
 }

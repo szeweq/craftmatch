@@ -1,7 +1,7 @@
-use std::{collections::HashMap, io::{BufRead, BufReader, Read, Seek}};
+use std::{collections::HashMap, io::{Read, Seek}};
 use anyhow::anyhow;
 
-use crate::{ext::Indexer, iter_extend, jvm, slice::ExtendSelf};
+use crate::{ext::Indexer, iter_extend, jvm, slice::ExtendSelf, zipext::FileMap};
 
 pub mod fabric;
 pub mod forge;
@@ -10,7 +10,7 @@ pub trait Extractor {
     type Data;
     fn mod_info(&self) -> Self::Data;
     fn deps(&self) -> anyhow::Result<DepMap>;
-    fn entries<RS: Read + Seek>(&self, zipfile: &mut zip::ZipArchive<RS>) -> anyhow::Result<jvm::ModEntries>;
+    fn entries<RS: Read + Seek>(&self, fm: &FileMap, rs: &mut RS) -> anyhow::Result<jvm::ModEntries>;
 }
 
 pub enum Ld<ForFabric: Sized, ForForge: Sized> {
@@ -33,24 +33,21 @@ impl Extractor for ExtractLoader {
             Self::Forge(x) => x.deps(),
         }
     }
-    fn entries<RS: Read + Seek>(&self, zipfile: &mut zip::ZipArchive<RS>) -> anyhow::Result<jvm::ModEntries> {
+    fn entries<RS: Read + Seek>(&self, fm: &FileMap, rs: &mut RS) -> anyhow::Result<jvm::ModEntries> {
         match self {
-            Self::Fabric(x) => x.entries(zipfile),
-            Self::Forge(x) => x.entries(zipfile),
+            Self::Fabric(x) => x.entries(fm, rs),
+            Self::Forge(x) => x.entries(fm, rs),
         }
     }
 }
 
-fn get_extractor<RS: Read + Seek>(zip: &mut zip::ZipArchive<RS>) -> anyhow::Result<ExtractLoader> {
-    Ok(if let Some(ix) = zip.index_for_name("fabric.mod.json") {
-        Ld::Fabric(fabric::ExtractFabric(json_safe_parse(zip.by_index(ix)?)?))
-    } else if let Some(ix) = zip.index_for_name("META-INF/mods.toml") {
-        let mut mf = zip.by_index(ix)?;
-        let mut s = String::with_capacity(mf.size() as usize);
-        mf.read_to_string(&mut s)?;
-        drop(mf);
+fn get_extractor<RS: Read + Seek>(fm: &FileMap, rs: &mut RS) -> anyhow::Result<ExtractLoader> {
+    Ok(if let Some(fe) = fm.get("fabric.mod.json") {
+        Ld::Fabric(fabric::ExtractFabric(json_safe_parse(fe.reader(rs)?)?))
+    } else if let Some(fe) = fm.get("META-INF/mods.toml") {
+        let s = fe.string_from(rs)?;
         let mut fmd: forge::ForgeMetadata = toml::from_str(&s)?;
-        let impl_version = version_from_mf(zip);
+        let impl_version = version_from_mf(fm, rs);
         fmd.impl_version = impl_version;
         Ld::Forge(forge::ExtractForge(fmd))
     } else {
@@ -80,14 +77,14 @@ impl ModData {
     pub const fn slug(&self) -> &str { &self.slug }
 }
 
-pub fn extract_mod_info<RS: Read + Seek>(zar: &mut zip::ZipArchive<RS>) -> anyhow::Result<ModTypeData> {
-    Ok(match get_extractor(zar)?.mod_info() {
+pub fn extract_mod_info<RS: Read + Seek>(fm: &FileMap, rs: &mut RS) -> anyhow::Result<ModTypeData> {
+    Ok(match get_extractor(fm, rs)?.mod_info() {
         Ld::Fabric(md) => ModTypeData::Fabric(md),
         Ld::Forge(md) => ModTypeData::Forge(md)
     })
 }
-pub fn extract_dep_map<RS: Read + Seek>(zar: &mut zip::ZipArchive<RS>) -> anyhow::Result<DepMap> {
-    get_extractor(zar)?.deps()
+pub fn extract_dep_map<RS: Read + Seek>(fm: &FileMap, rs: &mut RS) -> anyhow::Result<DepMap> {
+    get_extractor(fm, rs)?.deps()
 }
 
 #[derive(Clone, serde::Serialize)]
@@ -159,24 +156,25 @@ impl serde::Serialize for ParsedVersionReq {
     }
 }
 
-fn version_from_mf<RS: Read + Seek>(zip: &mut zip::ZipArchive<RS>) -> Option<Box<str>> {
-    let manifest = zip.by_name("META-INF/MANIFEST.MF").ok()?;
-    let bufr = BufReader::new(manifest);
-    bufr.lines().find_map(|l| l.ok().and_then(|l| l.strip_prefix("Implementation-Version: ").map(|x| x.to_string().into_boxed_str())))
+fn version_from_mf<RS: Read + Seek>(fm: &FileMap, rs: &mut RS) -> Option<Box<str>> {
+    let fe = fm.get("META-INF/MANIFEST.MF")?;
+
+    let bufr = fe.string_from(rs).ok()?;
+    bufr.lines().find_map(|l| l.strip_prefix("Implementation-Version: ").map(|x| x.to_string().into_boxed_str()))
 }
 
-pub fn extract_mod_entries<RS: Read + Seek>(zipfile: &mut zip::ZipArchive<RS>, mtd: &ModTypeData) -> anyhow::Result<jvm::ModEntries> {
+pub fn extract_mod_entries<RS: Read + Seek>(fm: &FileMap, mtd: &ModTypeData, rs: &mut RS) -> anyhow::Result<jvm::ModEntries> {
     match mtd {
         ModTypeData::Fabric(_) => {
-            if let Some(ix) = zipfile.index_for_name("fabric.mod.json") {
-                let manifest: serde_json::Map<String, serde_json::Value> = json_safe_parse(zipfile.by_index(ix)?)?;
+            if let Some(fe) = fm.get("fabric.mod.json") {
+                let manifest: serde_json::Map<String, serde_json::Value> = json_safe_parse(fe.reader(rs)?)?;
                 let entrypoints = manifest.get("entrypoints")
                     .and_then(|v| v.as_object()?.get("main")?.as_array())
                     .ok_or_else(|| anyhow!("No entrypoints in fabric.mod.json"))?
                     .iter().filter_map(|v| v.as_str()).collect::<Box<_>>();
                 let mut entries = Vec::with_capacity(entrypoints.len());
                 for &e in entrypoints.iter() {
-                    entries.push(jvm::scan_fabric_mod_entry(zipfile, e)?);
+                    entries.push(jvm::scan_fabric_mod_entry(e, fm, rs)?);
                 }
                 return Ok(jvm::ModEntries { classes: entries.into_boxed_slice() });
             }
@@ -184,7 +182,7 @@ pub fn extract_mod_entries<RS: Read + Seek>(zipfile: &mut zip::ZipArchive<RS>, m
         }
         ModTypeData::Forge(md) => {
             let slugs = md.iter().map(|m| &*m.slug).collect::<Box<_>>();
-            let classes = jvm::scan_forge_mod_entries(zipfile, &slugs)?;
+            let classes = jvm::scan_forge_mod_entries(&slugs, fm, rs)?;
             Ok(jvm::ModEntries { classes })
         }
     }

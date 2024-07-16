@@ -747,6 +747,7 @@ dependencies = [
  "cm-auth",
  "cm-jclass",
  "dirs",
+ "flate2",
  "indexmap 2.2.6",
  "once_cell",
  "opener",

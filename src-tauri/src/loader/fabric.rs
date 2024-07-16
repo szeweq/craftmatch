@@ -1,6 +1,6 @@
 use std::{collections::HashMap, io::{Read, Seek}};
 
-use crate::jvm;
+use crate::{jvm, zipext::FileMap};
 use super::{lenient_version, DepMap, Extractor, ModData, ParsedVersionReq, VersionData, VersionType};
 use anyhow::anyhow;
 
@@ -53,7 +53,7 @@ impl Extractor for ExtractFabric {
         }
         Ok(DepMap(vec![(fm.id.clone(), lenient_version(&fm.version), map)]))
     }
-    fn entries<RS: Read + Seek>(&self, zipfile: &mut zip::ZipArchive<RS>) -> anyhow::Result<jvm::ModEntries> {
+    fn entries<RS: Read + Seek>(&self, fm: &FileMap, rs: &mut RS) -> anyhow::Result<jvm::ModEntries> {
         let Some(entrypoints) = self.0.entrypoints.as_ref() else {
             return Ok(jvm::ModEntries { classes: Box::new([]) })
         };
@@ -62,7 +62,7 @@ impl Extractor for ExtractFabric {
             .iter().map(Entrypoints::str).collect::<Box<_>>();
         let mut entries = Vec::with_capacity(mep.len());
         for e in mep.iter() {
-            entries.push(jvm::scan_fabric_mod_entry(zipfile, e)?);
+            entries.push(jvm::scan_fabric_mod_entry(e, fm, rs)?);
         }
         Ok(jvm::ModEntries { classes: entries.into_boxed_slice() })
     }

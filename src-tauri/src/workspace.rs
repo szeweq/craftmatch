@@ -5,7 +5,7 @@ use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelI
 use serde::Deserialize;
 use state::TypeMap;
 
-use crate::{ext, extract, id::Id, jvm, loader::{self, ModTypeData}};
+use crate::{ext, extract, id::Id, jvm, loader::{self, ModTypeData}, zipext};
 
 #[derive(Clone)]
 pub struct WSLock(pub Arc<Mutex<DirWS>>);
@@ -53,10 +53,12 @@ impl DirWS {
             let entry = entry.ok()?;
             if entry.path().is_dir() { return None; }
             if ext::Extension::Jar.matches(&entry.file_name()) {
-                let id = id_from_time(&entry.path()).inspect_err(|e| {
+                let id = id_from_time(&entry.path()).map_err(|e| {
                     eprintln!("{}: {}", entry.path().display(), e);
                 }).ok()?;
-                Some((id, FileInfo::new(entry.path())))
+                let mut fi = FileInfo::new(entry.path());
+                fi.gather(gather_filemap, false).map_err(|e| eprintln!("Invalid filemap: {}", e)).ok()?;
+                Some((id, fi))
             } else {
                 None
             }
@@ -142,11 +144,17 @@ impl FileInfo {
     fn open<RS: io::Read + io::Seek>(reader: io::Result<RS>) -> anyhow::Result<zip::ZipArchive<RS>> {
         zip::ZipArchive::new(reader?).map_err(anyhow::Error::from)
     }
+    pub fn file_buf(&self) -> io::Result<BufReader<File>> {
+        File::open(&self.path).map(BufReader::new)
+    }
+    pub fn file_mem(&self) -> io::Result<io::Cursor<Vec<u8>>> {
+        fs::read(&self.path).map(io::Cursor::new)
+    }
     pub fn open_buf(&self) -> anyhow::Result<zip::ZipArchive<BufReader<File>>> {
-        Self::open(File::open(&self.path).map(BufReader::new))
+        Self::open(self.file_buf())
     }
     pub fn open_mem(&self) -> anyhow::Result<zip::ZipArchive<io::Cursor<Vec<u8>>>> {
-        Self::open(fs::read(&self.path).map(io::Cursor::new))
+        Self::open(self.file_mem())
     }
     pub fn get<T: Send + Sync + 'static>(&self) -> Option<Arc<T>> {
         self.datamap.try_get::<Arc<T>>().cloned()
@@ -191,37 +199,56 @@ impl WSMode {
 
 pub type Gatherer<T> = fn(&FileInfo) -> anyhow::Result<T>;
 
+fn get_file_map(fi: &FileInfo) -> anyhow::Result<Arc<zipext::FileMap>> {
+    fi.get().ok_or_else(|| anyhow::anyhow!("No file map"))
+}
+
 pub fn gather_mod_data(fi: &FileInfo) -> anyhow::Result<loader::ModTypeData> {
-    loader::extract_mod_info(&mut fi.open_buf()?)
+    let fm = get_file_map(fi)?;
+    loader::extract_mod_info(&fm, &mut fi.file_buf()?)
 }
 pub fn gather_dep_map(fi: &FileInfo) -> anyhow::Result<loader::DepMap> {
-    loader::extract_dep_map(&mut fi.open_buf()?)
+    let fm = get_file_map(fi)?;
+    loader::extract_dep_map(&fm, &mut fi.file_buf()?)
 }
 pub fn gather_file_type_sizes(fi: &FileInfo) -> anyhow::Result<extract::ModFileTypeSizes> {
-    extract::compute_file_type_sizes(&mut fi.open_mem()?)
+    let fm = get_file_map(fi)?;
+    extract::compute_file_type_sizes(&fm)
 }
 pub fn gather_content_sizes(fi: &FileInfo) -> anyhow::Result<extract::ModContentSizes> {
-    extract::compute_mod_content_sizes(&mut fi.open_mem()?)
+    let fm = get_file_map(fi)?;
+    extract::compute_mod_content_sizes(&fm)
 }
 pub fn gather_inheritance(fi: &FileInfo) -> anyhow::Result<ext::Inheritance> {
-    jvm::gather_inheritance_v2(fi.open_mem()?)
+    let fm = get_file_map(fi)?;
+    jvm::gather_inheritance_v2(&fm, &mut fi.file_mem()?)
 }
 pub fn gather_complexity(fi: &FileInfo) -> anyhow::Result<jvm::Complexity> {
-    jvm::gather_complexity(fi.open_mem()?)
+    let fm = get_file_map(fi)?;
+    jvm::gather_complexity(&fm, &mut fi.file_mem()?)
 }
 pub fn gather_tags(fi: &FileInfo) -> anyhow::Result<extract::TagsList> {
-    extract::gather_tags(fi.open_mem()?)
+    let fm = get_file_map(fi)?;
+    extract::gather_tags(&fm, &mut fi.file_mem()?)
 }
 pub fn gather_str_index(fi: &FileInfo) -> anyhow::Result<jvm::StrIndexMapped> {
-    jvm::gather_str_index_v2(fi.open_mem()?)
+    let fm = get_file_map(fi)?;
+    jvm::gather_str_index_v2(&fm, &mut fi.file_mem()?)
 }
 pub fn gather_mod_entries(fi: &FileInfo) -> anyhow::Result<jvm::ModEntries> {
+    let fm = get_file_map(fi)?;
     let Some(moddata) = fi.get::<loader::ModTypeData>() else { return Err(anyhow::anyhow!("No moddata")) };
-    loader::extract_mod_entries(&mut fi.open_mem()?, moddata.as_ref())
+    loader::extract_mod_entries(&fm, moddata.as_ref(), &mut fi.file_mem()?)
 }
 pub fn gather_recipes(fi: &FileInfo) -> anyhow::Result<extract::RecipeTypeMap> {
-    extract::gather_recipes(&mut fi.open_mem()?)
+    let fm = get_file_map(fi)?;
+    extract::gather_recipes(&fm, &mut fi.file_mem()?)
 }
 pub fn gather_playable(fi: &FileInfo) -> anyhow::Result<extract::PlayableFiles> {
-    Ok(extract::gather_playable_files(&fi.open_buf()?))
+    let fm = get_file_map(fi)?;
+    Ok(extract::gather_playable_files(&fm))
+}
+pub fn gather_filemap(fi: &FileInfo) -> anyhow::Result<zipext::FileMap> {
+    use zipext::ZipExt;
+    fi.open_mem()?.file_map()
 }

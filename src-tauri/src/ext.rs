@@ -55,10 +55,6 @@ impl Extension {
     pub fn matches<P: AsRef<OsStr> + ?Sized>(&self, s: &P) -> bool {
         Path::new(s).extension().map_or(false, |ext| ext.eq_ignore_ascii_case(self.str()))
     }
-    #[inline]
-    pub fn names_iter<'a, RS: Read + Seek>(&'a self, zar: &'a ZipArchive<RS>) -> impl Iterator<Item = &str> + '_ {
-        zar.file_names().filter(|&x| self.matches(x))
-    }
 }
 
 #[inline]
