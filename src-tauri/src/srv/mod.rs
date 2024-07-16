@@ -1,7 +1,7 @@
 use std::{fs, io, net::{Ipv4Addr, SocketAddrV4}, sync::{atomic::AtomicBool, Arc}};
 
 use axum::{body::Body, extract::{Path, State}, http::{header, HeaderValue, StatusCode}, response::{IntoResponse, Response}, routing, Router};
-use crate::{id::Id, rt, workspace::WSLock, zipext::ZipExt};
+use crate::{id::Id, rt, workspace::WSLock, zipext};
 
 #[derive(Clone)]
 pub struct Server {
@@ -69,7 +69,15 @@ pub async fn run_server(port: u16, ws: WSLock) -> anyhow::Result<()> {
 }
 
 fn get_raw(ws: &WSLock, id: Id, path: &str) -> Option<anyhow::Result<Vec<u8>>> {
-    let bp = ws.locking(|ws| ws.entry_path(id)).ok()?;
+    let x = ws.mods().and_then(|afe| {
+        let afe = &*afe.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
+        Ok(afe.get(&id).map(|x| (x.path.clone(), x.get::<zipext::FileMap>())))
+    });
+    let (bp, fm) = match x {
+        Ok(Some((p, Some(fm)))) => (p, fm),
+        Ok(Some((_, None))) | Ok(None) => return None,
+        Err(e) => { return Some(Err(e)) }
+    };
     let file = match fs::File::open(bp) {
         Ok(x) => x,
         Err(e) if e.kind() == io::ErrorKind::NotFound => {
@@ -77,9 +85,6 @@ fn get_raw(ws: &WSLock, id: Id, path: &str) -> Option<anyhow::Result<Vec<u8>>> {
         }
         Err(e) => { return Some(Err(e.into())) }
     };
-    let mut zip = match zip::ZipArchive::new(io::BufReader::new(file)) {
-        Ok(x) => x,
-        Err(e) => { return Some(Err(e.into())) }
-    };
-    zip.read_mem(path)
+    let fe = fm.get(path)?;
+    Some(fe.vec_from(&mut io::BufReader::new(file)))
 }

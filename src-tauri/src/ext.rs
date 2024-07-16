@@ -1,8 +1,5 @@
-use std::{collections::VecDeque, ffi::OsStr, hash, io::{Read, Seek}, marker::PhantomData, ops::Deref, path::Path, sync::Arc};
-
+use std::{collections::VecDeque, ffi::OsStr, hash, marker::PhantomData, ops::Deref, path::Path, sync::Arc};
 use serde::Serialize;
-use zip::{read::ZipFile, result::{ZipError, ZipResult}, ZipArchive};
-
 use crate::{iter_extend, slice::ExtendSelf};
 
 
@@ -57,52 +54,38 @@ impl Extension {
     }
 }
 
-#[inline]
-pub fn zip_file_iter<RS: Read + Seek>(z: &mut ZipArchive<RS>) -> ZipFileIter<RS, fn(&str) -> bool> {
-    ZipFileIter(0, z, |_| true)
-}
-
-#[inline]
-pub fn zip_file_ext_iter<RS: Read + Seek>(z: &mut ZipArchive<RS>, ext: Extension) -> ZipFileIter<RS, impl Fn(&str) -> bool> {
-    ZipFileIter(0, z, move |name| ext.matches(name))
-}
-// pub fn zip_file_match_iter<RS: Read + Seek, F: Fn(&str) -> bool>(z: &mut ZipArchive<RS>, f: F) -> ZipFileIter<RS, F> {
-//     ZipFileIter(0, z, f)
+// pub struct ZipFileIter<'a, RS: Read + Seek, F: Fn(&str) -> bool>(usize, &'a mut ZipArchive<RS>, F);
+// impl <'a, RS: Read + Seek, F: Fn(&str) -> bool> ZipFileIter<'a, RS, F> {
+//     fn next_index(&mut self) -> Option<usize> {
+//         Some(loop {
+//             let i = self.0;
+//             let name = self.1.name_for_index(i)?;
+//             self.0 += 1;
+//             if !is_zip_dir(name) && self.2(name) {
+//                 break i
+//             }
+//         })
+//     }
 // }
+// impl <'a, RS: Read + Seek, F: Fn(&str) -> bool> Iterator for ZipFileIter<'a, RS, F> {
+//     type Item = ZipResult<ZipFile<'a>>;
 
-pub struct ZipFileIter<'a, RS: Read + Seek, F: Fn(&str) -> bool>(usize, &'a mut ZipArchive<RS>, F);
-impl <'a, RS: Read + Seek, F: Fn(&str) -> bool> ZipFileIter<'a, RS, F> {
-    fn next_index(&mut self) -> Option<usize> {
-        Some(loop {
-            let i = self.0;
-            let name = self.1.name_for_index(i)?;
-            self.0 += 1;
-            if !is_zip_dir(name) && self.2(name) {
-                break i
-            }
-        })
-    }
-}
-impl <'a, RS: Read + Seek, F: Fn(&str) -> bool> Iterator for ZipFileIter<'a, RS, F> {
-    type Item = ZipResult<ZipFile<'a>>;
-
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        let i = self.next_index()?;
-        let azip: &'a mut ZipArchive<RS> = unsafe { std::mem::transmute(&mut *self.1) };
-        let x = azip.by_index(i);
-        if matches!(x, Err(ZipError::FileNotFound)) { None } else { Some(x) }
-    }
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let rest = self.1.len() - self.0;
-        (rest, Some(rest))
-    }
-}
-
-#[inline]
-fn is_zip_dir(p: &str) -> bool {
-    p.ends_with(&['/', '\\'])
-}
+//     #[inline]
+//     fn next(&mut self) -> Option<Self::Item> {
+//         let i = self.next_index()?;
+//         let azip: &'a mut ZipArchive<RS> = unsafe { std::mem::transmute(&mut *self.1) };
+//         let x = azip.by_index(i);
+//         if matches!(x, Err(ZipError::FileNotFound)) { None } else { Some(x) }
+//     }
+//     fn size_hint(&self) -> (usize, Option<usize>) {
+//         let rest = self.1.len() - self.0;
+//         (rest, Some(rest))
+//     }
+// }
+// #[inline]
+// fn is_zip_dir(p: &str) -> bool {
+//     p.ends_with(&['/', '\\'])
+// }
 
 #[derive(Serialize, Default)]
 pub struct Inheritance {

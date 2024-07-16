@@ -141,20 +141,11 @@ impl FileInfo {
     pub fn size(&self) -> u64 {
         fs::metadata(&self.path).map_or(0, |md| md.len())
     }
-    fn open<RS: io::Read + io::Seek>(reader: io::Result<RS>) -> anyhow::Result<zip::ZipArchive<RS>> {
-        zip::ZipArchive::new(reader?).map_err(anyhow::Error::from)
-    }
     pub fn file_buf(&self) -> io::Result<BufReader<File>> {
         File::open(&self.path).map(BufReader::new)
     }
     pub fn file_mem(&self) -> io::Result<io::Cursor<Vec<u8>>> {
         fs::read(&self.path).map(io::Cursor::new)
-    }
-    pub fn open_buf(&self) -> anyhow::Result<zip::ZipArchive<BufReader<File>>> {
-        Self::open(self.file_buf())
-    }
-    pub fn open_mem(&self) -> anyhow::Result<zip::ZipArchive<io::Cursor<Vec<u8>>>> {
-        Self::open(self.file_mem())
     }
     pub fn get<T: Send + Sync + 'static>(&self) -> Option<Arc<T>> {
         self.datamap.try_get::<Arc<T>>().cloned()
@@ -250,5 +241,5 @@ pub fn gather_playable(fi: &FileInfo) -> anyhow::Result<extract::PlayableFiles> 
 }
 pub fn gather_filemap(fi: &FileInfo) -> anyhow::Result<zipext::FileMap> {
     use zipext::ZipExt;
-    fi.open_mem()?.file_map()
+    zip::ZipArchive::new(fi.file_mem()?)?.file_map()
 }

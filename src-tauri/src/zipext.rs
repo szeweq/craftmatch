@@ -24,6 +24,7 @@ impl <RS: Read + Seek> ZipExt for zip::ZipArchive<RS> {
     fn file_map(&mut self) -> anyhow::Result<FileMap> {
         let mut m = indexmap::IndexMap::new();
         for i in 0..self.len() {
+            if self.name_for_index(i).is_some_and(|n| n.ends_with(&['/', '\\'])) { continue; }
             let file = self.by_index_raw(i)?;
             let comp = match file.compression() {
                 zip::CompressionMethod::Stored => Some(false),
