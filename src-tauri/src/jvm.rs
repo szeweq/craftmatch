@@ -4,7 +4,7 @@ use cafebabe::{attributes::{AnnotationElement, AnnotationElementValue, Attribute
 use once_cell::sync::Lazy;
 use serde::Serialize;
 
-use crate::{ext, zipext::FileMap};
+use crate::{ext::{self, Extension}, zipext::FileMap};
 use cm_jclass::{self, pool::PoolIter, JClassReader};
 
 pub static PARSE_TIMES: Lazy<Mutex<HashMap<Box<str>, time::Duration>>> = Lazy::new(|| Mutex::new(HashMap::new()));
@@ -45,7 +45,7 @@ impl std::ops::Deref for CFOwned {
 pub fn gather_inheritance_v2<RS: Read + Seek>(fm: &FileMap, rs: &mut RS) -> anyhow::Result<ext::Inheritance> {
     use std::str::from_utf8;
     let mut inh = ext::Inheritance::default();
-    for fe in fm.values() {
+    for (_, fe) in fm.iter().filter(|(k, _)| Extension::Class.matches(k.as_ref())) {
         let cr = fe.reader(rs)?;
         let jcr = JClassReader::new(cr)?;
         let ajcn = jcr.class_name()?;
@@ -116,7 +116,7 @@ impl <R> FromIterator<R> for Complexity where R: AsRef<Self> {
 
 pub fn gather_complexity<RS: Read + Seek>(fm: &FileMap, rs: &mut RS) -> anyhow::Result<Complexity> {
     let mut cmplx = Complexity(HashMap::new());
-    for fe in fm.values() {
+    for (_, fe) in fm.iter().filter(|(k, _)| Extension::Class.matches(k.as_ref())) {
         let cf = CFOwned::from_reader(fe.reader(rs)?, true)?;
         cmplx.fill_from(&cf);
     }
@@ -157,7 +157,7 @@ impl From<StrIndex> for StrIndexMapped {
 
 pub fn gather_str_index_v2<RS: Read + Seek>(fm: &FileMap, rs: &mut RS) -> anyhow::Result<StrIndexMapped> {
     let mut sidx = StrIndex { classes: vec![], strings: HashMap::new() };
-    for fe in fm.values() {
+    for (_, fe) in fm.iter().filter(|(k, _)| Extension::Class.matches(k.as_ref())) {
         let jcr = JClassReader::new(fe.reader(rs)?)?;
         let name = jcr.class_name()?.to_string().into_boxed_str();
         let sz = sidx.classes.len();
@@ -176,7 +176,7 @@ pub struct ModEntries {
 
 pub fn scan_forge_mod_entries<RS: Read + Seek>(names: &[&str], fm: &FileMap, rs: &mut RS) -> anyhow::Result<Box<[Box<str>]>> {
     let mut found = vec![None; names.len()];
-    for fe in fm.values() {
+    for (_, fe) in fm.iter().filter(|(k, _)| Extension::Class.matches(k.as_ref())) {
         let cf = CFOwned::from_reader(fe.reader(rs)?, false)?;
         let Some(a) = find_annotation(&cf, "Lnet/minecraftforge/fml/common/Mod;") else { continue; };
         for e in &a.elements {

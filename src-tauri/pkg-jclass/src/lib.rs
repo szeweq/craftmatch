@@ -45,7 +45,7 @@ impl std::fmt::Display for JStr {
 fn read_magic<R: Read>(r: &mut R) -> anyhow::Result<()> {
     let magic = r.read_u32::<BE>()?;
     if magic != 0xCAFEBABE {
-        anyhow::bail!("Invalid magic");
+        anyhow::bail!("Invalid magic (0x{:x})", magic);
     }
     Ok(())
 }
