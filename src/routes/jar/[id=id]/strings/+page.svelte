@@ -13,7 +13,7 @@
   <SortBtn label="Sort by count" bind:sort={sb.sortID} />
   <Paginator {pag} />
 </section>
-<ul class="text-xs list-none px-1">{#each pag as [c, x] (c)}
+<ul class="text-xs px-1">{#each pag as [c, x] (c)}
   <li><details>
     <summary>{JSON.stringify(c)} ({x.length})</summary>
     <div class="ml-1 pl-3 b-0 b-l-2 b-solid b-white/40">{#each x as u}

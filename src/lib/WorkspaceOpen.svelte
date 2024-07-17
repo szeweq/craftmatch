@@ -56,7 +56,7 @@
   <QInput {...queryFiles} id="ws-files-q" placeholder="Search files" />
   <SortBtn label="Sort by size" bind:sort={sortFiles.sortID} />
 </section>
-<ul class="text-sm b-2 b-solid b-white/40 rounded-md list-none mx-0 my-2 text-truncate">
+<ul class="text-sm b-2 b-solid b-white/40 rounded-md mx-0 my-2 text-truncate">
   {#each sortFiles as [id, f, n] (id)}
     <li class="f hov-effect justify-between gap-1 px-1 items-center">
       <a class=":uno: flex-1 block hover:c-inherit! p-1" href={`/jar/${id}`}>

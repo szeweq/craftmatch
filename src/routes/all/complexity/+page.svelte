@@ -14,7 +14,7 @@
   <SortBtn label="Sort by count" bind:sort={sb.sortID} />
   <Paginator {pag} />
 </section>
-<ul class="text-xs list-none px-1">
+<ul class="text-xs px-1">
   {#each pag as [k, v] (k)}
     <li><details>
       <summary>{k} ({v.total})</summary>

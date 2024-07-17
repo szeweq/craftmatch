@@ -220,6 +220,7 @@ img:not([is-broken]) + span.img-error {
 
 ul {
   padding: 0;
+  list-style: none;
 }
 [popover] {
   margin: 0;

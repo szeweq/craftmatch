@@ -16,7 +16,7 @@
   {#if ctype && data.recipes[ctype]}
     <div class="px-1">
       <h2>{ctype}</h2>
-      <ul class="text-xs list-none">
+      <ul class="text-xs">
         {#each data.recipes[ctype] as k (k)}
           <li>{k}</li>
         {/each}

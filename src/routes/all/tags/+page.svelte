@@ -12,7 +12,7 @@
     {#each types as s (s)}<label><input type="radio" bind:group={ctype} value={s} hidden /><span class="block p-1 rounded-md hov-effect">{s}</span></label>{/each}
   </div>
   {#if ctype && data[ctype]}
-    <ul class="text-xs list-none px-1">
+    <ul class="text-xs px-1">
       {#each Object.entries(data[ctype]) as [k, v] (k)}
         {@const oe = Object.entries(v)}
         <li><details>
