@@ -1,4 +1,7 @@
 # Craftmatch
+
+![Logo](https://raw.githubusercontent.com/szeweq/craftmatch/main/cm-logo.png)
+
 A project to examine your mods and modpacks for Minecraft.
 
 This whole thing lets you check what is going on inside the mods.
