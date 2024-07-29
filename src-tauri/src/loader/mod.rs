@@ -171,7 +171,7 @@ pub fn extract_mod_entries<RS: Read + Seek>(fm: &FileMap, mtd: &ModTypeData, rs:
                 let entrypoints = manifest.get("entrypoints")
                     .and_then(|v| v.as_object()?.get("main")?.as_array())
                     .ok_or_else(|| anyhow!("No entrypoints in fabric.mod.json"))?
-                    .iter().filter_map(|v| v.as_str()).collect::<Box<_>>();
+                    .iter().filter_map(|v| v.as_str()).collect::<Box<[_]>>();
                 let mut entries = Vec::with_capacity(entrypoints.len());
                 for &e in entrypoints.iter() {
                     entries.push(jvm::scan_fabric_mod_entry(e, fm, rs)?);

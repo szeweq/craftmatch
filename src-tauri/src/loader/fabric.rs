@@ -59,7 +59,7 @@ impl Extractor for ExtractFabric {
         };
         let mep = entrypoints.get("main")
             .ok_or_else(|| anyhow!("No entrypoints in fabric.mod.json"))?
-            .iter().map(Entrypoints::str).collect::<Box<_>>();
+            .iter().map(Entrypoints::str).collect::<Box<[_]>>();
         let mut entries = Vec::with_capacity(mep.len());
         for e in mep.iter() {
             entries.push(jvm::scan_fabric_mod_entry(e, fm, rs)?);
