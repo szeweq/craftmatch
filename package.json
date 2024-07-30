@@ -11,7 +11,7 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@tauri-apps/api": "2.0.0-beta.15"
+    "@tauri-apps/api": "2.0.0-beta.16"
   },
   "devDependencies": {
     "@iconify-json/material-symbols": "^1.1.85",
@@ -19,13 +19,13 @@
     "@sveltejs/kit": "^2.5.18",
     "@sveltejs/vite-plugin-svelte": "^3.1.1",
     "@tsconfig/svelte": "^5.0.4",
-    "@unocss/extractor-svelte": "^0.61.6",
-    "@unocss/preset-icons": "^0.61.6",
-    "svelte": "5.0.0-next.200",
+    "@unocss/extractor-svelte": "^0.61.7",
+    "@unocss/preset-icons": "^0.61.7",
+    "svelte": "5.0.0-next.201",
     "svelte-check": "^3.8.4",
     "tslib": "^2.6.3",
     "typescript": "^5.5.4",
-    "unocss": "^0.61.6",
+    "unocss": "^0.61.7",
     "vite": "^5.3.5"
   }
 }
