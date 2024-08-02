@@ -6,8 +6,8 @@
     "main"
   ],
   "permissions": [
-    "event:default",
-    "app:default",
-    "resources:default"
+    "core:event:default",
+    "core:app:default",
+    "core:resources:default"
   ]
 }
