@@ -2,10 +2,11 @@
   color-scheme: dark;
   font-family: Inter, sans-serif;
   font-optical-sizing: auto;
-  font-feature-settings: 'liga' 1, 'calt' 1;
+  font-feature-settings: 'liga' 1, 'calt' 1, 'cv05' 1;
   font-size: 16px;
   line-height: 24px;
   font-weight: 400;
+  letter-spacing: -0.01em;
 
   color: #fff;
   background-image: linear-gradient(to bottom, hsl(271, 18%, 20%), hsl(29, 18%, 20%));
