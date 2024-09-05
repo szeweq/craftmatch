@@ -31,32 +31,41 @@ impl <RS: Read + Seek> ZipExt for zip::ZipArchive<RS> {
                 zip::CompressionMethod::Deflated => Some(true),
                 _ => None
             };
-            m.insert(file.name().into(), FileEntry(file.size(), file.compressed_size(), file.data_start(), comp));
+            m.insert(file.name().into(), FileEntry {
+                len: file.size(),
+                comp_len: file.compressed_size(),
+                start: file.data_start(), comp
+            });
         }
         Ok(FileMap(m))
     }
 }
 
-pub struct FileEntry(u64, u64, u64, Option<bool>);
+pub struct FileEntry {
+    len: u64,
+    comp_len: u64,
+    start: u64,
+    comp: Option<bool>
+}
 impl FileEntry {
     pub fn vec_from<RS: Read + Seek>(&self, rs: &mut RS) -> anyhow::Result<Vec<u8>> {
         self.reader(rs).and_then(|mut cr| {
-            let mut buf = vec![0; self.0 as usize];
+            let mut buf = vec![0; self.len as usize];
             cr.read_exact(&mut buf)?;
             Ok(buf)
         })
     }
     pub fn string_from<RS: Read + Seek>(&self, rs: &mut RS) -> anyhow::Result<String> {
         self.reader(rs).and_then(|mut cr| {
-            let mut buf = String::with_capacity(self.0 as usize);
+            let mut buf = String::with_capacity(self.len as usize);
             cr.read_to_string(&mut buf)?;
             Ok(buf)
         })
     }
     pub fn reader<'a, RS: Read + Seek>(&self, rs: &'a mut RS) -> anyhow::Result<CompressRead<io::Take<&'a mut RS>>> {
-        rs.seek(std::io::SeekFrom::Start(self.2))?;
-        let rs = rs.take(self.1);
-        self.3.map_or_else(|| Err(anyhow::anyhow!("Bad compression")), |x| {
+        rs.seek(std::io::SeekFrom::Start(self.start))?;
+        let rs = rs.take(self.comp_len);
+        self.comp.map_or_else(|| Err(anyhow::anyhow!("Bad compression")), |x| {
             let cr = if x {
                 CompressRead::Deflate(flate2::read::DeflateDecoder::new(rs))
             } else {
@@ -67,10 +76,10 @@ impl FileEntry {
     }
 
     pub const fn size(&self) -> u64 {
-        self.0
+        self.len
     }
     pub const fn compressed(&self) -> u64 {
-        self.1
+        self.comp_len
     }
 }
 
