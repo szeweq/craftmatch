@@ -61,7 +61,8 @@ async fn mod_dirs(app: tauri::AppHandle, state: State<'_, WSLock>, kind: imp::Re
             let astate = Arc::clone(&state.0);
             rt::spawn(async move {
                 let Some(mdir) = imp::get_mods_dir(&dir) else { return; };
-                if let Err(e) = astate.lock().unwrap().prepare(mdir) {
+                let r = astate.lock().unwrap().prepare(mdir);
+                if let Err(e) = r {
                     eprintln!("Opening workspace error: {e}");
                 }
                 if let Err(e) = app.emit("ws-open", true) {
@@ -79,7 +80,8 @@ async fn workspace(app: tauri::AppHandle, state: State<'_, WSLock>, open: bool) 
     rt::spawn(async move {
         if open {
             let Some(dir) = rfd::AsyncFileDialog::new().pick_folder().await else { return };
-            if let Err(e) = astate.lock().unwrap().prepare(dir.into()) {
+            let r = astate.lock().unwrap().prepare(dir.into());
+            if let Err(e) = r {
                 eprintln!("Opening workspace error: {e}");
             }
             if let Err(e) = app.emit("ws-open", true) {
