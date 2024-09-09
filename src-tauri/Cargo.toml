@@ -6,7 +6,7 @@ authors = ["Szeweq"]
 edition = "2021"
 
 [workspace]
-members = ["pkg-auth", "pkg-jclass"]
+members = ["pkg-auth", "pkg-jclass", "pkg-zipext"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -50,6 +50,7 @@ flate2 = "1.0"
 
 cm-auth = {path = "pkg-auth"}
 cm-jclass = {path = "pkg-jclass"}
+cm-zipext = {path = "pkg-zipext"}
 
 [lints.clippy]
 nursery = {level = "warn", priority = -1}

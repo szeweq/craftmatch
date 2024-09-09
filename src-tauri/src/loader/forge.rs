@@ -1,6 +1,8 @@
 use std::{collections::HashMap, io::{Read, Seek}};
 
-use crate::{jvm, loader::{VersionData, VersionType}, zipext::FileMap};
+use cm_zipext::FileMap;
+
+use crate::{jvm, loader::{VersionData, VersionType},};
 
 use super::{lenient_version, DepMap, Extractor, ModData, ParsedVersionReq};
 

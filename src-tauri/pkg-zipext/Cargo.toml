@@ -1,0 +1,10 @@
+[package]
+name = "cm-zipext"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+zip = {version = "2.1", default-features = false, features = ["deflate"] }
+flate2 = "1.0"
+anyhow.workspace = true
+indexmap.workspace = true

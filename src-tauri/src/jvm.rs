@@ -1,10 +1,11 @@
 use std::{borrow::Cow, collections::HashMap, io::{Read, Seek}, sync::Mutex, time};
 
 use cafebabe::{attributes::{AnnotationElement, AnnotationElementValue, AttributeData}, descriptor::{FieldType, Ty}};
+use cm_zipext::FileMap;
 use once_cell::sync::Lazy;
 use serde::Serialize;
 
-use crate::{ext::{self, Extension}, zipext::FileMap};
+use crate::ext::{self, Extension};
 use cm_jclass::{self, pool::PoolIter, JClassReader};
 
 pub static PARSE_TIMES: Lazy<Mutex<HashMap<Box<str>, time::Duration>>> = Lazy::new(|| Mutex::new(HashMap::new()));

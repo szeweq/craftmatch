@@ -641,6 +641,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "cm-zipext"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "flate2",
+ "indexmap 2.5.0",
+ "zip",
+]
+
+[[package]]
 name = "cocoa"
 version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -789,6 +799,7 @@ dependencies = [
  "chrono",
  "cm-auth",
  "cm-jclass",
+ "cm-zipext",
  "dirs",
  "flate2",
  "indexmap 2.5.0",

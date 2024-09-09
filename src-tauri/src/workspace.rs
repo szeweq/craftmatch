@@ -5,7 +5,7 @@ use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelI
 use serde::Deserialize;
 use state::TypeMap;
 
-use crate::{ext, extract, id::Id, jvm, loader::{self, ModTypeData}, zipext};
+use crate::{ext, extract, id::Id, jvm, loader::{self, ModTypeData}};
 
 #[derive(Clone)]
 pub struct WSLock(pub Arc<Mutex<DirWS>>);
@@ -190,7 +190,7 @@ impl WSMode {
 
 pub type Gatherer<T> = fn(&FileInfo) -> anyhow::Result<T>;
 
-fn get_file_map(fi: &FileInfo) -> anyhow::Result<Arc<zipext::FileMap>> {
+fn get_file_map(fi: &FileInfo) -> anyhow::Result<Arc<cm_zipext::FileMap>> {
     fi.get().ok_or_else(|| anyhow::anyhow!("No file map"))
 }
 
@@ -239,7 +239,7 @@ pub fn gather_playable(fi: &FileInfo) -> anyhow::Result<extract::PlayableFiles> 
     let fm = get_file_map(fi)?;
     Ok(extract::gather_playable_files(&fm))
 }
-pub fn gather_filemap(fi: &FileInfo) -> anyhow::Result<zipext::FileMap> {
-    use zipext::ZipExt;
+pub fn gather_filemap(fi: &FileInfo) -> anyhow::Result<cm_zipext::FileMap> {
+    use cm_zipext::ZipExt;
     zip::ZipArchive::new(fi.file_mem()?)?.file_map()
 }

@@ -1,9 +1,10 @@
 use std::{collections::HashMap, io::{Read, Seek}};
 
 use anyhow::Result;
+use cm_zipext::FileMap;
 use serde::{Deserialize, Serialize};
 
-use crate::{ext::Extension, slice::{iter_extend, ExtendSelf}, zipext::FileMap};
+use crate::{ext::Extension, slice::{iter_extend, ExtendSelf}};
 
 #[derive(Serialize, Default)]
 pub struct ModFileTypeSizes(HashMap<Box<str>, [usize; 3]>);

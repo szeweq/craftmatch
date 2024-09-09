@@ -1,7 +1,8 @@
 use std::{collections::HashMap, io::{Read, Seek}};
 use anyhow::anyhow;
+use cm_zipext::FileMap;
 
-use crate::{ext::Indexer, iter_extend, jvm, slice::ExtendSelf, zipext::FileMap};
+use crate::{ext::Indexer, iter_extend, jvm, slice::ExtendSelf};
 
 pub mod fabric;
 pub mod forge;

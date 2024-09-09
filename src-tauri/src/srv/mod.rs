@@ -1,7 +1,7 @@
 use std::{fs, io, net::{Ipv4Addr, SocketAddrV4}, sync::{atomic::AtomicBool, Arc}};
 
 use axum::{body::Body, extract::{Path, State}, http::{header, HeaderValue, StatusCode}, response::{IntoResponse, Response}, routing, Router};
-use crate::{id::Id, rt, workspace::WSLock, zipext};
+use crate::{id::Id, rt, workspace::WSLock};
 
 #[derive(Clone)]
 pub struct Server {
@@ -71,7 +71,7 @@ pub async fn run_server(port: u16, ws: WSLock) -> anyhow::Result<()> {
 fn get_raw(ws: &WSLock, id: Id, path: &str) -> Option<anyhow::Result<Vec<u8>>> {
     let x = ws.mods().and_then(|afe| {
         let afe = &*afe.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
-        Ok(afe.get(&id).map(|x| (x.path.clone(), x.get::<zipext::FileMap>())))
+        Ok(afe.get(&id).map(|x| (x.path.clone(), x.get::<cm_zipext::FileMap>())))
     });
     let (bp, fm) = match x {
         Ok(Some((p, Some(fm)))) => (p, fm),

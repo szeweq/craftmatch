@@ -1,8 +1,9 @@
 use std::{collections::HashMap, io::{Read, Seek}};
 
-use crate::{jvm, zipext::FileMap};
+use crate::jvm;
 use super::{lenient_version, DepMap, Extractor, ModData, ParsedVersionReq, VersionData, VersionType};
 use anyhow::anyhow;
+use cm_zipext::FileMap;
 
 type VersionReqMap = HashMap<Box<str>, ParsedVersionReq>;
 
