@@ -1,46 +1,5 @@
 use std::{io::{self, Read, Seek}, ops::Deref};
 
-
-pub trait ZipExt {
-    fn read_mem(&mut self, path: &str) -> Option<anyhow::Result<Vec<u8>>>;
-    fn file_map(&mut self) -> anyhow::Result<FileMap>;
-}
-
-impl <RS: Read + Seek> ZipExt for zip::ZipArchive<RS> {
-    #[inline]
-    fn read_mem(&mut self, path: &str) -> Option<anyhow::Result<Vec<u8>>> {
-        let mut file = match self.by_name(path) {
-            Ok(file) => file,
-            Err(zip::result::ZipError::FileNotFound) => return None,
-            Err(e) => return Some(Err(e.into()))
-        };
-        let mut buf = vec![0; file.size() as usize];
-        if let Err(e) = file.read_exact(&mut buf) {
-            return Some(Err(e.into()));
-        }
-        Some(Ok(buf))
-    }
-
-    fn file_map(&mut self) -> anyhow::Result<FileMap> {
-        let mut m = indexmap::IndexMap::new();
-        for i in 0..self.len() {
-            if self.name_for_index(i).is_some_and(|n| n.ends_with(&['/', '\\'])) { continue; }
-            let file = self.by_index_raw(i)?;
-            let comp = match file.compression() {
-                zip::CompressionMethod::Stored => Some(false),
-                zip::CompressionMethod::Deflated => Some(true),
-                _ => None
-            };
-            m.insert(file.name().into(), FileEntry {
-                len: file.size(),
-                comp_len: file.compressed_size(),
-                start: file.data_start(), comp
-            });
-        }
-        Ok(FileMap(m))
-    }
-}
-
 pub struct FileEntry {
     len: u64,
     comp_len: u64,
@@ -85,6 +44,27 @@ impl FileEntry {
 
 #[repr(transparent)]
 pub struct FileMap(pub indexmap::IndexMap<Box<str>, FileEntry>);
+impl FileMap {
+    pub fn from_zip_read_seek(mut rs: impl Read + Seek) -> anyhow::Result<Self> {
+        let mut z = zip::ZipArchive::new(&mut rs)?;
+        let mut m = indexmap::IndexMap::new();
+        for i in 0..z.len() {
+            if z.name_for_index(i).is_some_and(|n| n.ends_with(&['/', '\\'])) { continue; }
+            let file = z.by_index_raw(i)?;
+            let comp = match file.compression() {
+                zip::CompressionMethod::Stored => Some(false),
+                zip::CompressionMethod::Deflated => Some(true),
+                _ => None
+            };
+            m.insert(file.name().into(), FileEntry {
+                len: file.size(),
+                comp_len: file.compressed_size(),
+                start: file.data_start(), comp
+            });
+        }
+        Ok(Self(m))
+    }
+}
 impl Deref for FileMap {
     type Target = indexmap::IndexMap<Box<str>, FileEntry>;
     fn deref(&self) -> &Self::Target {

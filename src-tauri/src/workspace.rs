@@ -240,6 +240,5 @@ pub fn gather_playable(fi: &FileInfo) -> anyhow::Result<extract::PlayableFiles> 
     Ok(extract::gather_playable_files(&fm))
 }
 pub fn gather_filemap(fi: &FileInfo) -> anyhow::Result<cm_zipext::FileMap> {
-    use cm_zipext::ZipExt;
-    zip::ZipArchive::new(fi.file_mem()?)?.file_map()
+    cm_zipext::FileMap::from_zip_read_seek(fi.file_mem()?)
 }
