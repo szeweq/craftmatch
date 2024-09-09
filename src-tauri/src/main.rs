@@ -12,7 +12,6 @@ mod imp;
 mod id;
 mod loader;
 mod srv;
-mod zipext;
 
 use std::{collections::HashMap, sync::Arc, time::Instant};
 use id::Id;
