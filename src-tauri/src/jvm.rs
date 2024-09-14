@@ -28,11 +28,9 @@ impl CFOwned {
         Self(Box::new(x), buf)
     }
 
-    pub fn from_reader<R: Read>(mut r: R, bytecode: bool) -> anyhow::Result<Self> {
-        let mut buf = Vec::new();
-        r.read_to_end(&mut buf)?;
-        let bb = {unsafe {std::mem::transmute::<&[u8], &[u8]>(buf.as_slice())}};
-        Ok(Self::new(parse_class_safe(bb, bytecode)?, buf.into_boxed_slice()))
+    pub fn from_vec(v: Vec<u8>, bytecode: bool) -> anyhow::Result<Self> {
+        let bb = unsafe {std::mem::transmute::<&[u8], &[u8]>(v.as_slice())};
+        Ok(Self::new(parse_class_safe(bb, bytecode)?, v.into_boxed_slice()))
     }
 }
 impl std::ops::Deref for CFOwned {
@@ -118,7 +116,7 @@ impl <R> FromIterator<R> for Complexity where R: AsRef<Self> {
 pub fn gather_complexity<RS: Read + Seek>(fm: &FileMap, rs: &mut RS) -> anyhow::Result<Complexity> {
     let mut cmplx = Complexity(HashMap::new());
     for (_, fe) in fm.iter().filter(|(k, _)| Extension::Class.matches(k.as_ref())) {
-        let cf = CFOwned::from_reader(fe.reader(rs)?, true)?;
+        let cf = CFOwned::from_vec(fe.vec_from(rs)?, true)?;
         cmplx.fill_from(&cf);
     }
     Ok(cmplx)
@@ -178,7 +176,7 @@ pub struct ModEntries {
 pub fn scan_forge_mod_entries<RS: Read + Seek>(names: &[&str], fm: &FileMap, rs: &mut RS) -> anyhow::Result<Box<[Box<str>]>> {
     let mut found = vec![None; names.len()];
     for (_, fe) in fm.iter().filter(|(k, _)| Extension::Class.matches(k.as_ref())) {
-        let cf = CFOwned::from_reader(fe.reader(rs)?, false)?;
+        let cf = CFOwned::from_vec(fe.vec_from(rs)?, false)?;
         let Some(a) = find_annotation(&cf, "Lnet/minecraftforge/fml/common/Mod;") else { continue; };
         for e in &a.elements {
             if let AnnotationElement{name: x, value: AnnotationElementValue::StringConstant(s)} = e {

@@ -183,28 +183,7 @@ async fn ws_complexity(state: State<'_, DirWS>, mode: WSMode) -> Result<Arc<jvm:
     let x = mode.gather_from_entries(mods, workspace::gather_complexity)
         .map_err(|e| eprintln!("Error in ws_complexity: {e}"));
     println!("gather_complexity took {:?}", now.elapsed());
-
-    // Verification: It seems that `cafebabe` crate does not verify the strings.
-    let mut valid = true;
-    if let Ok(x) = &x {
-        for (k, v) in x.0.iter() {
-            match str::from_utf8(k.as_bytes()) {
-                Ok(k) => {
-                    if let Some(p) = v.code.iter().position(|(s, _)| str::from_utf8(s.as_bytes()).is_err()) {
-                        eprintln!("Invalid code key found (at {k:?} [{p}])");
-                        valid = false;
-                    }// else {
-                    //    println!("[{k}] --> {v:?}");
-                    //}
-                }
-                Err(_) => {
-                    eprintln!("Invalid complexity key found: {}", k.escape_default());
-                    valid = false;
-                }
-            }
-        }
-    }
-    if valid { x } else { Err(()) }
+    x
 }
 #[command]
 async fn ws_tags(state: State<'_, DirWS>, mode: WSMode) -> Result<Arc<extract::TagsList>, ()> {
