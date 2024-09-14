@@ -69,14 +69,14 @@ pub fn gather_inheritance_v2<RS: Read + Seek>(fm: &FileMap, rs: &mut RS) -> anyh
 }
 
 #[derive(Serialize)]
-pub struct Complexity(HashMap<Box<str>, ClassCounting>);
+pub struct Complexity(pub HashMap<Box<str>, ClassCounting>);
 
-#[derive(Clone, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ClassCounting {
     total: usize,
     fields: usize,
     methods: usize,
-    code: Vec<(Box<str>, usize)>
+    pub code: Vec<(Box<str>, usize)>
 }
 impl Complexity {
     pub fn new() -> Self {
@@ -96,7 +96,7 @@ impl Complexity {
                     }
                 }) else { continue; };
                 let Some(bc) = &mcode.bytecode else { continue; };
-                let mn = m.name.replacen("lambda$", "λ ", 1);
+                let mn = m.name.replacen("lambda$", "lambda ", 1);
                 let x = &m.descriptor;
                 total += bc.opcodes.len();
                 v.push(((format!("{mn} {x}")).into_boxed_str(), bc.opcodes.len()));

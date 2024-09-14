@@ -1,4 +1,4 @@
-use std::{any::type_name, fs::{self, File}, io::{self, BufReader}, path::{Path, PathBuf}, sync::{Arc, Mutex, RwLock, RwLockReadGuard}, time};
+use std::{any::type_name, fs::{self, File}, io::{self, BufReader}, path::{Path, PathBuf}, sync::{Arc, RwLock, RwLockReadGuard, Weak}, time};
 
 use indexmap::IndexMap;
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
@@ -7,48 +7,43 @@ use state::TypeMap;
 
 use crate::{ext, extract, id::Id, jvm, loader::{self, ModTypeData}};
 
-#[derive(Clone)]
-pub struct WSLock(pub Arc<Mutex<DirWS>>);
-impl WSLock {
-    pub fn new() -> Self {
-        Self(Arc::new(Mutex::new(DirWS::new())))
-    }
-    #[inline]
-    pub fn locking<T>(&self, f: impl FnOnce(&DirWS) -> anyhow::Result<T>) -> anyhow::Result<T> {
-        self.0.lock().map_or_else(|_| Err(anyhow::anyhow!("WSLock poisoned")), |ws| {
-            f(&ws)
-        })
-    }
-    pub fn mods(&self) -> anyhow::Result<WSFiles> {
-        self.locking(|ws| Ok(Arc::clone(&ws.mod_entries)))
-    }
-}
-
-type WSFiles = Arc<RwLock<IndexMap<Id, FileInfo>>>;
+type LockMap<V> = Arc<RwLock<IndexMap<Id, V>>>;
 type Namespaces = Arc<RwLock<IndexMap<Box<str>, Id>>>;
 
+#[derive(Clone)]
 pub struct DirWS {
-    dir_path: Box<Path>,
-    mod_entries: WSFiles,
+    dir_path: Arc<RwLock<Box<Path>>>,
+    mod_entries: LockMap<FileInfo>,
+    filemaps: LockMap<Arc<cm_zipext::FileMap>>,
     namespaces: Namespaces
 }
 impl DirWS {
     pub fn new() -> Self {
         Self {
-            dir_path: Box::from(Path::new("")),
+            dir_path: Arc::new(RwLock::new(Box::from(Path::new("")))),
             mod_entries: Arc::new(RwLock::new(IndexMap::new())),
+            filemaps: Arc::new(RwLock::new(IndexMap::new())),
             namespaces: Arc::new(RwLock::new(IndexMap::new())),
         }
     }
-    pub fn reset(&mut self) {
-        *self = Self::new();
+    pub const fn mods(&self) -> &LockMap<FileInfo> {
+        &self.mod_entries
+    }
+    pub fn mods_read(&self) -> RwLockReadGuard<IndexMap<Id, FileInfo>> {
+        self.mod_entries.read().unwrap()
+    }
+    pub fn reset(&self) {
+        *self.dir_path.write().unwrap() = Box::from(Path::new(""));
+        *self.mod_entries.write().unwrap() = IndexMap::new();
+        *self.filemaps.write().unwrap() = IndexMap::new();
+        *self.namespaces.write().unwrap() = IndexMap::new();
     }
     pub fn is_empty(&self) -> bool {
-        &*self.dir_path != Path::new("")
+        &**self.dir_path.read().unwrap() != Path::new("")
     }
-    pub fn prepare(&mut self, dir_path: PathBuf) -> anyhow::Result<()> {
-        self.dir_path = dir_path.into_boxed_path();
-        let rdir = fs::read_dir(&self.dir_path)?;
+    pub fn prepare(&self, dir_path: PathBuf) -> anyhow::Result<()> {
+        *self.dir_path.write().unwrap() = dir_path.into_boxed_path();
+        let rdir = fs::read_dir(&*self.dir_path.read().unwrap())?;
         let mut jars = rdir.filter_map(|entry| {
             let entry = entry.ok()?;
             if entry.path().is_dir() { return None; }
@@ -56,14 +51,20 @@ impl DirWS {
                 let id = id_from_time(&entry.path()).map_err(|e| {
                     eprintln!("{}: {}", entry.path().display(), e);
                 }).ok()?;
-                let mut fi = FileInfo::new(entry.path());
-                fi.gather(gather_filemap, false).map_err(|e| eprintln!("Invalid filemap: {}", e)).ok()?;
+                let fi = FileInfo::new(entry.path());
                 Some((id, fi))
             } else {
                 None
             }
         }).collect::<IndexMap<_, _>>();
         jars.sort_unstable_keys();
+
+        let fmaps = jars.par_iter_mut().filter_map(|(id, fi)| {
+            let fm = cm_zipext::FileMap::from_zip_read_seek(fi.file_mem().ok()?).ok()?;
+            let afm = Arc::new(fm);
+            fi.filemap = Arc::downgrade(&afm);
+            Some((*id, afm))
+        }).collect::<IndexMap<_, _>>();
 
         let ns = jars.par_iter_mut()
             .filter_map(|(id, fi)| Some((*id, fi.get_or_gather(gather_mod_data).ok()?)))
@@ -74,6 +75,7 @@ impl DirWS {
             .collect::<IndexMap<_, _>>();
 
         *self.mod_entries.write().unwrap() = jars;
+        *self.filemaps.write().unwrap() = fmaps;
         *self.namespaces.write().unwrap() = ns;
         Ok(())
     }
@@ -93,7 +95,7 @@ pub trait AllGather {
     fn gather_with<T: Send + Sync + 'static>(&self, force: bool, gfn: Gatherer<T>) -> anyhow::Result<RwLockReadGuard<'_, IndexMap<Id, FileInfo>>>;
     fn gather_by_id<T: Send + Sync + 'static>(&self, id: Id, gfn: Gatherer<T>) -> anyhow::Result<Arc<T>>;
 }
-impl AllGather for WSFiles {
+impl AllGather for LockMap<FileInfo> {
     fn gather_with<T: Send + Sync + 'static>(&self, force: bool, gfn: Gatherer<T>) -> anyhow::Result<RwLockReadGuard<'_, IndexMap<Id, FileInfo>>> {
         self.write().map_err(|_| anyhow::anyhow!("Error in gather_with"))?.par_values_mut().for_each(|file_entry| {
             if let Err(e) = file_entry.gather(gfn, force) {
@@ -122,7 +124,7 @@ fn now_seconds() -> f64 {
 }
 
 pub struct FileInfo {
-    //pub id: Uuid,
+    filemap: Weak<cm_zipext::FileMap>,
     pub path: Box<Path>,
     pub errors: Vec<FileError>,
     datamap: TypeMap![Send + Sync]
@@ -130,10 +132,14 @@ pub struct FileInfo {
 impl FileInfo {
     pub fn new(path: PathBuf) -> Self {
         Self {
+            filemap: Weak::new(),
             path: path.into_boxed_path(),
             errors: Vec::new(),
             datamap: <TypeMap![Send + Sync]>::new()
         }
+    }
+    pub fn filemap(&self) -> Option<Arc<cm_zipext::FileMap>> {
+        self.filemap.upgrade()
     }
     pub fn name(&self) -> String {
         self.path.file_name().map_or(self.path.as_os_str(), |name| name).to_string_lossy().to_string()
@@ -177,7 +183,7 @@ pub enum WSMode {
     Specific(Id),
 }
 impl WSMode {
-    pub fn gather_from_entries<T: Send + Sync + FromIterator<Arc<T>> + 'static>(self, entries: &WSFiles, gfn: Gatherer<T>) -> anyhow::Result<Arc<T>> {
+    pub fn gather_from_entries<T: Send + Sync + FromIterator<Arc<T>> + 'static>(self, entries: &LockMap<FileInfo>, gfn: Gatherer<T>) -> anyhow::Result<Arc<T>> {
         match self {
             Self::Generic(force) => {
                 let fe = &*entries.gather_with(force, gfn)?;
@@ -191,7 +197,7 @@ impl WSMode {
 pub type Gatherer<T> = fn(&FileInfo) -> anyhow::Result<T>;
 
 fn get_file_map(fi: &FileInfo) -> anyhow::Result<Arc<cm_zipext::FileMap>> {
-    fi.get().ok_or_else(|| anyhow::anyhow!("No file map"))
+    fi.filemap.upgrade().ok_or_else(|| anyhow::anyhow!("No file map"))
 }
 
 pub fn gather_mod_data(fi: &FileInfo) -> anyhow::Result<loader::ModTypeData> {
@@ -238,7 +244,4 @@ pub fn gather_recipes(fi: &FileInfo) -> anyhow::Result<extract::RecipeTypeMap> {
 pub fn gather_playable(fi: &FileInfo) -> anyhow::Result<extract::PlayableFiles> {
     let fm = get_file_map(fi)?;
     Ok(extract::gather_playable_files(&fm))
-}
-pub fn gather_filemap(fi: &FileInfo) -> anyhow::Result<cm_zipext::FileMap> {
-    cm_zipext::FileMap::from_zip_read_seek(fi.file_mem()?)
 }
