@@ -70,7 +70,7 @@ impl DirWS {
             .filter_map(|(id, fi)| Some((*id, fi.get_or_gather(gather_mod_data).ok()?)))
             .flat_map(|(id, md)| (match &*md {
                 ModTypeData::Fabric(d) => d.par_iter(),
-                ModTypeData::Forge(d) => d.par_iter(),
+                ModTypeData::Forge(d) | ModTypeData::Neoforge(d) => d.par_iter(),
             }).map(|d| (Box::from(d.slug()), id)).collect::<Vec<_>>())
             .collect::<IndexMap<_, _>>();
 

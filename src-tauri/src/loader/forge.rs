@@ -15,6 +15,7 @@ pub(super) struct ForgeMetadata {
     //#[serde(rename = "issueTrackerURL")]
     //issue_tracker_url: Option<Box<str>>,
     mods: Box<[ForgeModInfo]>,
+    #[serde(default)]
     dependencies: HashMap<Box<str>, Vec<ForgeDependency>>
 }
 
@@ -36,7 +37,9 @@ pub(super) struct ForgeModInfo {
 #[serde(rename_all = "camelCase")]
 pub(super) struct ForgeDependency {
     mod_id: Box<str>,
+    #[serde(default)]
     mandatory: bool,
+    #[serde(default)]
     version_range: Box<str>,
     ordering: Option<Box<str>>,
     side: Option<Box<str>>
@@ -80,7 +83,7 @@ impl Extractor for ExtractForge {
             let mut map = HashMap::new();
             for d in dv {
                 let vd = VersionData(
-                    translate_version(&d.version_range)?,
+                    translate_version(&d.version_range).unwrap_or_else(|_| ParsedVersionReq::Invalid(d.version_range.clone())),
                     if d.mandatory { VersionType::Required } else { VersionType::Optional }
                 );
                 map.insert(d.mod_id.clone(), vd);

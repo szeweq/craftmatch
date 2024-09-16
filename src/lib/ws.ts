@@ -18,7 +18,7 @@ export type ClassCounting = {total: number, fields: number, methods: number, cod
 export type Complexity = {[k: string]: ClassCounting}
 export type Tags = {[k: string]: {[k2: string]: {[k3: string]: number}}}
 export type ModData = {
-  type: "forge" | "fabric",
+  type: "forge" | "neoforge" | "fabric",
   mods: {
     name: string,
     slug: string,

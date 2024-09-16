@@ -1,6 +1,6 @@
 use std::{collections::HashMap, io::{Read, Seek}};
 use anyhow::anyhow;
-use cm_zipext::FileMap;
+use cm_zipext::{FileEntry, FileMap};
 
 use crate::{ext::Indexer, iter_extend, jvm, slice::ExtendSelf};
 
@@ -16,7 +16,8 @@ pub trait Extractor {
 
 pub enum Ld<ForFabric: Sized, ForForge: Sized> {
     Fabric(ForFabric),
-    Forge(ForForge)
+    Forge(ForForge),
+    Neoforge(ForForge)
 }
 
 type ExtractLoader = Ld<fabric::ExtractFabric, forge::ExtractForge>;
@@ -26,18 +27,19 @@ impl Extractor for ExtractLoader {
         match self {
             Self::Fabric(x) => Ld::Fabric(x.mod_info()),
             Self::Forge(x) => Ld::Forge(x.mod_info()),
+            Self::Neoforge(x) => Ld::Neoforge(x.mod_info()),
         }
     }
     fn deps(&self) -> anyhow::Result<DepMap> {
         match self {
             Self::Fabric(x) => x.deps(),
-            Self::Forge(x) => x.deps(),
+            Self::Forge(x) | Self::Neoforge(x) => x.deps(),
         }
     }
     fn entries<RS: Read + Seek>(&self, fm: &FileMap, rs: &mut RS) -> anyhow::Result<jvm::ModEntries> {
         match self {
             Self::Fabric(x) => x.entries(fm, rs),
-            Self::Forge(x) => x.entries(fm, rs),
+            Self::Forge(x) | Self::Neoforge(x) => x.entries(fm, rs),
         }
     }
 }
@@ -46,21 +48,28 @@ fn get_extractor<RS: Read + Seek>(fm: &FileMap, rs: &mut RS) -> anyhow::Result<E
     Ok(if let Some(fe) = fm.get("fabric.mod.json") {
         Ld::Fabric(fabric::ExtractFabric(json_safe_parse(fe.reader(rs)?)?))
     } else if let Some(fe) = fm.get("META-INF/mods.toml") {
-        let s = fe.string_from(rs)?;
-        let mut fmd: forge::ForgeMetadata = toml::from_str(&s)?;
-        let impl_version = version_from_mf(fm, rs);
-        fmd.impl_version = impl_version;
-        Ld::Forge(forge::ExtractForge(fmd))
+        Ld::Forge(extract_forge(fm, fe, rs)?)
+    } else if let Some(fe) = fm.get("META-INF/neoforge.mods.toml") {
+        Ld::Neoforge(extract_forge(fm, fe, rs)?)
     } else {
         return Err(anyhow!("No manifest in jar"));
     })
+}
+
+fn extract_forge<RS: Read + Seek>(fm: &FileMap, fe: &FileEntry, rs: &mut RS) -> anyhow::Result<forge::ExtractForge> {
+    let s = fe.string_from(rs)?;
+    let mut fmd: forge::ForgeMetadata = toml::from_str(&s)?;
+    let impl_version = version_from_mf(fm, rs);
+    fmd.impl_version = impl_version;
+    Ok(forge::ExtractForge(fmd))
 }
 
 #[derive(serde::Serialize)]
 #[serde(tag = "type", content = "mods")]
 pub enum ModTypeData {
     Fabric(Box<[ModData; 1]>),
-    Forge(Box<[ModData]>)
+    Forge(Box<[ModData]>),
+    Neoforge(Box<[ModData]>),
 }
 
 #[derive(serde::Serialize)]
@@ -81,7 +90,8 @@ impl ModData {
 pub fn extract_mod_info<RS: Read + Seek>(fm: &FileMap, rs: &mut RS) -> anyhow::Result<ModTypeData> {
     Ok(match get_extractor(fm, rs)?.mod_info() {
         Ld::Fabric(md) => ModTypeData::Fabric(md),
-        Ld::Forge(md) => ModTypeData::Forge(md)
+        Ld::Forge(md) => ModTypeData::Forge(md),
+        Ld::Neoforge(md) => ModTypeData::Neoforge(md)
     })
 }
 pub fn extract_dep_map<RS: Read + Seek>(fm: &FileMap, rs: &mut RS) -> anyhow::Result<DepMap> {
@@ -181,7 +191,7 @@ pub fn extract_mod_entries<RS: Read + Seek>(fm: &FileMap, mtd: &ModTypeData, rs:
             }
             Err(anyhow!("No fabric.mod.json"))
         }
-        ModTypeData::Forge(md) => {
+        ModTypeData::Forge(md) | ModTypeData::Neoforge(md) => {
             let slugs = md.iter().map(|m| &*m.slug).collect::<Box<_>>();
             let classes = jvm::scan_forge_mod_entries(&slugs, fm, rs)?;
             Ok(jvm::ModEntries { classes })
