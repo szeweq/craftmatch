@@ -1,6 +1,6 @@
-use std::{fs, io, net::{Ipv4Addr, SocketAddrV4}, sync::{atomic::AtomicBool, Arc}};
+use std::{fs, io, net::{Ipv4Addr, SocketAddrV4}, ops::RangeInclusive, sync::{atomic::AtomicBool, Arc}};
 
-use axum::{body::Body, extract::{Path, State}, http::{header, HeaderValue, StatusCode}, response::{IntoResponse, Response}, routing, Router};
+use axum::{body::Body, extract::{Path, State}, http::{header, HeaderMap, HeaderValue, StatusCode}, response::{IntoResponse, Response}, routing, Router};
 use crate::{id::Id, rt, workspace::DirWS};
 
 #[derive(Clone)]
@@ -41,14 +41,26 @@ fn select_port() -> Option<u16> {
 
 async fn get_raw_data(
     Path((id, path)): Path<(Id, String)>,
+    headers: HeaderMap,
     State(ws): State<DirWS>,
 ) -> Response {
     let mut hm = header::HeaderMap::new();
     hm.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"));
     let (status, body) = match get_raw(&ws, id, &path) {
         Some(Ok(data)) => {
+            let dlen = data.len();
             hm.insert(header::CACHE_CONTROL, HeaderValue::from_static("max-age=31536000"));
-            (StatusCode::OK, Body::from(data))
+            if let Some(range) = headers.get(header::RANGE).and_then(|hr| {
+                parse_range(hr, dlen as u64)
+                    .inspect_err(|e| eprintln!("{e}"))
+                    .ok()
+            }) {
+                hm.insert(header::CONTENT_RANGE, HeaderValue::from_str(&format!("bytes {}-{}/{}", range.start(), range.end(), dlen)).unwrap());
+                let data = data[range].to_vec();
+                (StatusCode::PARTIAL_CONTENT, Body::from(data))
+            } else {
+                (StatusCode::OK, Body::from(data))
+            }
         }
         None => (StatusCode::NOT_FOUND, Body::empty()),
         Some(Err(e)) => {
@@ -57,6 +69,14 @@ async fn get_raw_data(
         }
     };
     (status, hm, body).into_response()
+}
+
+fn parse_range(hv: &HeaderValue, size: u64) -> anyhow::Result<RangeInclusive<usize>> {
+    let range = hv.to_str()?;
+    let pr = http_range_header::parse_range_header(range)?;
+    let vr = pr.validate(size)?;
+    let (start, end) = vr[0].clone().into_inner();
+    Ok((start.try_into()?)..=(end.try_into()?))
 }
 
 pub async fn run_server(port: u16, ws: DirWS) -> anyhow::Result<()> {
