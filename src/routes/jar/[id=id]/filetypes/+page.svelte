@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { useUnitFmt, percentFmt } from '$lib/intl.svelte';
+  import EntryHeader from '$lib/EntryHeader.svelte';
+import { useUnitFmt, percentFmt } from '$lib/intl.svelte';
   let {data}: { data: import('./$types').PageData } = $props()
   let types = $derived(Object.keys(data.sizes))
   const sortFns: ((a: [number, number, number], b: [number, number, number]) => number)[] = [
@@ -39,8 +40,7 @@
   <td>{percentFmt(size && compressed / size)}</td>
   <td>{inKB((size - compressed) / 1024)}</td>
 {/snippet}
-<h1>File types</h1>
-<div>{data.name}</div>
+<EntryHeader {data} title="File types" />
 <table class="border-collapse w-full">
   <thead class="b-white/60 b-b-2 b-b-solid">
     <tr class="*:p-1 hover:*:bg-white/10 select-none">

@@ -1,5 +1,6 @@
 <script lang="ts">
-  import Paginator from '$lib/Paginator.svelte'
+  import EntryHeader from '$lib/EntryHeader.svelte';
+import Paginator from '$lib/Paginator.svelte'
   import QInput from '$lib/QInput.svelte'
   import SortBtn from '$lib/SortBtn.svelte'
   import { queryable, paginate, sortable } from '$lib/data.svelte'
@@ -8,6 +9,7 @@
   const sb = sortable(q, x => x[1].length)
   const pag = paginate(sb)
 </script>
+<EntryHeader {data} title="Strings" />
 <section class="stick-top rounded-md b-solid b-white/40 b-2 bgvar-c-bg1 p-1">
   <QInput {...q} />
   <SortBtn label="Sort by count" bind:sort={sb.sortID} />

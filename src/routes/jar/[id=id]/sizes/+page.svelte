@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { useUnitFmt, percentFmt } from '$lib/intl.svelte';
+  import EntryHeader from '$lib/EntryHeader.svelte';
+import { useUnitFmt, percentFmt } from '$lib/intl.svelte';
   import type { ContentTypes } from '$lib/ws';
 
   let {data}: { data: import('./$types').PageData } = $props()
@@ -31,8 +32,7 @@
   }
   let inKB = useUnitFmt('kilobyte', 2)
 </script>
-<h1>File info</h1>
-<div>{data.name}</div>
+<EntryHeader {data} title="File info" />
 <div class="text-sm">Files: {typeFmt(allSizes, 0)}</div>
 <div class="text-sm">Internal size: {typeFmt(allSizes, 2)} / {typeFmt(allSizes, 1)} ({typeFmt(allSizes, 3)})</div>
 {#if data.sizes != null}

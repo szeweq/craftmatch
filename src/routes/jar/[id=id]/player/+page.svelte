@@ -1,11 +1,11 @@
 <script lang="ts">
+    import EntryHeader from '$lib/EntryHeader.svelte';
 import srv from '$lib/srv'
 
 let {data}: { data: import('./$types').PageData } = $props()
 let selected = $state(-1)
 </script>
-<h1>Player</h1>
-<p>Files from: {data.name}</p>
+<EntryHeader {data} title="Player" />
 <div class="f flex-col text-xs">
   {#if data.files.length > 0}{#each data.files as f, i}
     <label><input type="radio" bind:group={selected} value={i} hidden /><span>{f}</span></label>

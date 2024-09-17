@@ -1,4 +1,6 @@
 <script>
+    import EntryHeader from '$lib/EntryHeader.svelte';
+
   let {data} = $props()
   let types = $derived(Object.keys(data.recipes))
   let ctype = $state("")
@@ -6,8 +8,7 @@
     if (ctype == "") ctype = types[0]
   })
 </script>
-<h1>All recipes</h1>
-<p>From: {data.name}</p>
+<EntryHeader {data} title="Recipes" />
 {#if types.length > 0}
 <div class="f">
   <div class="f flex-col w-40 text-xs gap-1 bgvar-c-bg2 rounded-md p-1 sel:bgvar-c-bg1">
