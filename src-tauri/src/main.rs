@@ -36,7 +36,7 @@ async fn auth(app: tauri::AppHandle, state: State<'_, cm_auth::GithubClient>) ->
 
 #[command]
 async fn logout(app: tauri::AppHandle, state: State<'_, cm_auth::GithubClient>) -> Result<(), ()> {
-    state.remove_token();
+    state.remove_token().await;
     rt::spawn(async move { emit_auth(app, None); });
     Ok(())
 }

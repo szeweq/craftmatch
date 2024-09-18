@@ -1,8 +1,9 @@
-use std::{sync::{Arc, Mutex}, time};
+use std::{sync::Arc, time};
 
 use indexmap::IndexMap;
 use oauth2::{basic::{BasicClient, BasicTokenResponse}, reqwest::{self, header}, AccessToken, AuthUrl, ClientId, DeviceCode, DeviceCodeErrorResponse, DeviceCodeErrorResponseType, EndpointNotSet, EndpointSet, Scope, StandardDeviceAuthorizationResponse, TokenResponse, TokenUrl};
 use serde::{Deserialize, Serialize};
+use tokio::sync::{RwLock, RwLockReadGuard};
 
 const GH_CLIENT_ID: &str = "Ov23li3zsnysqjjjZLhm";
 
@@ -10,7 +11,7 @@ const GH_CLIENT_ID: &str = "Ov23li3zsnysqjjjZLhm";
 pub struct GithubClient {
     auth: Arc<BasicClient<EndpointSet, EndpointSet, EndpointNotSet, EndpointNotSet, EndpointSet>>,
     http: reqwest::Client,
-    token: Arc<Mutex<Option<AccessToken>>>,
+    token: Arc<RwLock<Option<AccessToken>>>,
 }
 impl GithubClient {
     pub fn setup() -> anyhow::Result<Self> {
@@ -23,11 +24,11 @@ impl GithubClient {
             .redirect(reqwest::redirect::Policy::none())
             .build()?;
 
-        Ok(Self { auth: Arc::new(auth), http, token: Arc::new(Mutex::new(None)) })
+        Ok(Self { auth: Arc::new(auth), http, token: Arc::new(RwLock::new(None)) })
     }
 
-    pub fn remove_token(&self) {
-        *self.token.lock().unwrap() = None;
+    pub async fn remove_token(&self) {
+        *self.token.write().await = None;
     }
 
     pub async fn authorize<F: Fn(&str, &str) -> anyhow::Result<()> + Send>(&self, send_code: F) -> anyhow::Result<()> {
@@ -42,18 +43,22 @@ impl GithubClient {
         send_code(details.user_code().secret(), &uri)?;
 
         let token_resp = gh_access_device_token(&self.http, details.device_code(), details.interval(), details.expires_in()).await?;
-        let ref_token = &mut *self.token.lock().map_err(|_| anyhow::anyhow!("Failed to save token"))?;
-        *ref_token = Some(token_resp.access_token().clone());
+        *self.token.write().await = Some(token_resp.access_token().clone());
 
         Ok(())
     }
 
-    fn token(&self) -> anyhow::Result<AccessToken> {
-        self.token.lock().map_err(|_| anyhow::anyhow!("Failed to get token"))?.clone().ok_or_else(|| anyhow::anyhow!("no token"))
+    async fn token(&self) -> anyhow::Result<RwLockReadGuard<AccessToken>> {
+        let rg = self.token.read().await;
+        if rg.as_ref().is_some() {
+            Ok(RwLockReadGuard::map(rg, |x| x.as_ref().unwrap()))
+        } else {
+            Err(anyhow::anyhow!("no token"))
+        }
     }
 
     async fn gql_query(&self, query: &str) -> anyhow::Result<reqwest::Response> {
-        let token = self.token()?;
+        let token = self.token().await?;
         let resp = self.http.post("https://api.github.com/graphql").bearer_auth(token.secret())
             .header(header::USER_AGENT, header::HeaderValue::from_static("craftmatch/0.1.0"))
             .json(&Query { query })
