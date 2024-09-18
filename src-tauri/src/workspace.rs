@@ -1,6 +1,7 @@
-use std::{any::type_name, fs::{self, File}, io::{self, BufReader}, path::{Path, PathBuf}, sync::{Arc, RwLock, RwLockReadGuard, Weak}, time};
+use std::{any::type_name, fs::{self, File}, io::{self, BufReader}, path::{Path, PathBuf}, sync::{Arc, Weak}, time};
 
 use indexmap::IndexMap;
+use parking_lot::{RwLock, RwLockReadGuard};
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use serde::Deserialize;
 use state::TypeMap;
@@ -30,20 +31,20 @@ impl DirWS {
         &self.mod_entries
     }
     pub fn mods_read(&self) -> RwLockReadGuard<IndexMap<Id, FileInfo>> {
-        self.mod_entries.read().unwrap()
+        self.mod_entries.read()
     }
     pub fn reset(&self) {
-        *self.dir_path.write().unwrap() = Box::from(Path::new(""));
-        *self.mod_entries.write().unwrap() = IndexMap::new();
-        *self.filemaps.write().unwrap() = IndexMap::new();
-        *self.namespaces.write().unwrap() = IndexMap::new();
+        *self.dir_path.write() = Box::from(Path::new(""));
+        *self.mod_entries.write() = IndexMap::new();
+        *self.filemaps.write() = IndexMap::new();
+        *self.namespaces.write() = IndexMap::new();
     }
     pub fn is_empty(&self) -> bool {
-        &**self.dir_path.read().unwrap() != Path::new("")
+        &**self.dir_path.read() != Path::new("")
     }
     pub fn prepare(&self, dir_path: PathBuf) -> anyhow::Result<()> {
-        *self.dir_path.write().unwrap() = dir_path.into_boxed_path();
-        let rdir = fs::read_dir(&*self.dir_path.read().unwrap())?;
+        *self.dir_path.write() = dir_path.into_boxed_path();
+        let rdir = fs::read_dir(&*self.dir_path.read())?;
         let mut jars = rdir.filter_map(|entry| {
             let entry = entry.ok()?;
             if entry.path().is_dir() { return None; }
@@ -74,38 +75,38 @@ impl DirWS {
             }).map(|d| (Box::from(d.slug()), id)).collect::<Vec<_>>())
             .collect::<IndexMap<_, _>>();
 
-        *self.mod_entries.write().unwrap() = jars;
-        *self.filemaps.write().unwrap() = fmaps;
-        *self.namespaces.write().unwrap() = ns;
+        *self.mod_entries.write() = jars;
+        *self.filemaps.write() = fmaps;
+        *self.namespaces.write() = ns;
         Ok(())
     }
     pub fn entry_path(&self, id: Id) -> anyhow::Result<Box<Path>> {
-        let fe = self.mod_entries.read().map_err(|_| anyhow::anyhow!("fe read error"))?;
+        let fe = self.mod_entries.read();
         let Some(fi) = fe.get(&id) else { anyhow::bail!("file not found") };
         let p = fi.path.clone();
         drop(fe);
         Ok(p)
     }
     pub fn namespace_keys(&self) -> Vec<Box<str>> {
-        self.namespaces.read().unwrap().keys().cloned().collect()
+        self.namespaces.read().keys().cloned().collect()
     }
 }
 
 pub trait AllGather {
-    fn gather_with<T: Send + Sync + 'static>(&self, force: bool, gfn: Gatherer<T>) -> anyhow::Result<RwLockReadGuard<'_, IndexMap<Id, FileInfo>>>;
+    fn gather_with<T: Send + Sync + 'static>(&self, force: bool, gfn: Gatherer<T>) -> RwLockReadGuard<'_, IndexMap<Id, FileInfo>>;
     fn gather_by_id<T: Send + Sync + 'static>(&self, id: Id, gfn: Gatherer<T>) -> anyhow::Result<Arc<T>>;
 }
 impl AllGather for LockMap<FileInfo> {
-    fn gather_with<T: Send + Sync + 'static>(&self, force: bool, gfn: Gatherer<T>) -> anyhow::Result<RwLockReadGuard<'_, IndexMap<Id, FileInfo>>> {
-        self.write().map_err(|_| anyhow::anyhow!("Error in gather_with"))?.par_values_mut().for_each(|file_entry| {
+    fn gather_with<T: Send + Sync + 'static>(&self, force: bool, gfn: Gatherer<T>) -> RwLockReadGuard<'_, IndexMap<Id, FileInfo>> {
+        self.write().par_values_mut().for_each(|file_entry| {
             if let Err(e) = file_entry.gather(gfn, force) {
                 eprintln!("{}: {}", file_entry.path.display(), e);
             }
         });
-        self.read().map_err(|_| anyhow::anyhow!("WSFiles read error"))
+        self.read()
     }
     fn gather_by_id<T: Send + Sync + 'static>(&self, id: Id, gfn: Gatherer<T>) -> anyhow::Result<Arc<T>> {
-        let fe = &mut *self.write().map_err(|_| anyhow::anyhow!("fe write error"))?;
+        let fe = &mut *self.write();
         let Some(fi) = fe.get_mut(&id) else { anyhow::bail!("file not found") };
         fi.get_or_gather(gfn)
     }
@@ -186,7 +187,7 @@ impl WSMode {
     pub fn gather_from_entries<T: Send + Sync + FromIterator<Arc<T>> + 'static>(self, entries: &LockMap<FileInfo>, gfn: Gatherer<T>) -> anyhow::Result<Arc<T>> {
         match self {
             Self::Generic(force) => {
-                let fe = &*entries.gather_with(force, gfn)?;
+                let fe = &*entries.gather_with(force, gfn);
                 Ok(Arc::new(fe.values().filter_map(FileInfo::get::<T>).collect()))
             }
             Self::Specific(id) => entries.gather_by_id(id, gfn)

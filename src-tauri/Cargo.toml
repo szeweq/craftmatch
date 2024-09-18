@@ -47,6 +47,7 @@ chrono = {version = "0.4", features = ["serde"] }
 axum = "0.7"
 flate2 = "1.0"
 http-range-header = "0.4"
+parking_lot = "0.12"
 
 cm-auth = {path = "pkg-auth"}
 cm-jclass = {path = "pkg-jclass"}
