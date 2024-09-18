@@ -7,11 +7,11 @@ let selected = $state(-1)
 </script>
 <EntryHeader {data} title="Player" />
 <div class="f flex-col text-xs">
-  {#if data.files.length > 0}{#each data.files as f, i}
+  {#each data.files as f, i}
     <label><input type="radio" bind:group={selected} value={i} hidden /><span>{f}</span></label>
-  {/each}{:else}
+  {:else}
     <div>It seems that this mod does not have any audio files.</div>
-  {/if}
+  {/each}
 </div>
 <div class="stick-bottom left-[calc(var(--s-aside)+1rem)] right-4">
   {#if selected >= 0 && selected < data.files.length}
