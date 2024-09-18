@@ -73,7 +73,7 @@ impl Extractor for ExtractForge {
         let mut v = Vec::new();
         let impl_version = &self.0.impl_version;
         let depm = &self.0.dependencies;
-        for fmi in self.0.mods.iter() {
+        for fmi in &self.0.mods {
             let Some(dv) = depm.get(&fmi.mod_id) else { continue; };
             let dver = if fmi.version.trim_start().starts_with('$') {
                 impl_version.as_ref().unwrap_or(&fmi.version)
