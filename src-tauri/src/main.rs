@@ -139,12 +139,11 @@ fn ws_str_index(state: State<'_, DirWS>, id: Id) -> Option<Arc<jvm::StrIndexMapp
     ws_item(state, id, workspace::gather_str_index).inspect_err(|e| eprintln!("Error in ws_str_index: {e}")).ok()
 }
 #[command]
-fn ws_mod_errors(state: State<'_, DirWS>, id: Id) -> Result<Vec<workspace::FileError>, ()> {
-    let mods = state.mods_read();
-    Ok(mods.get(&id).map_or_else(|| {
+fn ws_mod_errors(state: State<'_, DirWS>, id: Id) -> Vec<workspace::FileError> {
+    state.mods_read().get(&id).map_or_else(|| {
         eprintln!("Error in ws_mod_errors: file not found");
         vec![]
-    }, |fe| fe.errors.clone()))
+    }, |fe| fe.errors.clone())
 }
 
 #[command]
