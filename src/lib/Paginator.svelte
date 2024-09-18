@@ -11,12 +11,12 @@
 </script>
 <nav bind:this={navElem} class="pag f items-center justify-center gap-0.5">
   {#if pag.current > 0}
-    <button class="p-prev before:i-ms-arrow-back" onclick={() => pag.current -= 1}></button>
+    <button class="p-prev before:i-ms-arrow-back" title="Previous page" aria-label="Previous" onclick={() => pag.current -= 1}></button>
   {/if}
   {#each around as p (p)}
     <button class:active={p === pag.current} onclick={() => pag.current = p}>{p + 1}</button>
   {/each}
   {#if pag.current < pag.all - 1}
-    <button class="p-next before:i-ms-arrow-forward" onclick={() => pag.current += 1}></button>
+    <button class="p-next before:i-ms-arrow-forward" title="Next page" aria-label="Next" onclick={() => pag.current += 1}></button>
   {/if}
 </nav>

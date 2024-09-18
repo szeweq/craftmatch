@@ -63,8 +63,8 @@
         <div>{f}</div>
         <div class="text-xs c-white/60">{kbfmt(n / 1024)}</div>
       </a>
-      <button class="btn-icon before:i-ms-open-in-new" onclick={() => invokeWS('ws_show', {id})}></button>
-      <button class="btn-icon before:i-ms-more-vert" popovertarget="file-opts" onclick={e => showMenu(e.currentTarget, id)}></button>
+      <button class="btn-icon before:i-ms-open-in-new" aria-label="Show" onclick={() => invokeWS('ws_show', {id})}></button>
+      <button class="btn-icon before:i-ms-more-vert" aria-label="Options" popovertarget="file-opts" onclick={e => showMenu(e.currentTarget, id)}></button>
     </li>
   {/each}
 </ul>
