@@ -1,12 +1,20 @@
+<script module>
+import SettingsModal from "$lib/SettingsModal.svelte"
+import AuthModal from "$lib/AuthModal.svelte"
+import WrongModal from "$lib/WrongModal.svelte"
+const dialogs = [
+  SettingsModal,
+  AuthModal,
+  WrongModal
+]
+</script>
 <script>
 import "../styles.css"
 import "virtual:uno.css"
 import { page } from "$app/stores"
 import { ws } from "$lib/workspace.svelte"
 import Loading from "$lib/Loading.svelte"
-import SettingsModal from "$lib/SettingsModal.svelte"
 import { goto } from "$app/navigation"
-import AuthModal from "$lib/AuthModal.svelte"
 import { user } from "$lib/auth.svelte"
 import Modal from "$lib/Modal.svelte"
 let {children} = $props()
@@ -14,6 +22,7 @@ let backEnabled = $state(false)
 $effect.pre(() => page.subscribe(p => backEnabled = p.url.pathname !== "/"))
 let openDialog = $state(0)
 const closeDialog = () => openDialog = 0
+let ModalInner = $derived(dialogs[Math.min(openDialog, dialogs.length - 1) - 1] ?? null)
 </script>
 <svelte:document onerror={e => console.log(e)} />
 <aside>
@@ -32,6 +41,7 @@ const closeDialog = () => openDialog = 0
   <Loading />
 </main>
 <footer>...</footer>
-<Modal open={openDialog === 1}><SettingsModal onclose={closeDialog}/></Modal>
-<Modal open={openDialog === 2}><AuthModal onclose={closeDialog} /></Modal>
+<Modal open={openDialog > 0}>
+  <ModalInner onclose={closeDialog} />
+</Modal>
 
