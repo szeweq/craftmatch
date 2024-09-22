@@ -1,6 +1,6 @@
 <script lang="ts">
-  import EntryHeader from '$lib/EntryHeader.svelte';
-import { useUnitFmt, percentFmt } from '$lib/intl.svelte';
+  import EntryHeader from '$lib/EntryHeader.svelte'
+  import { useUnitFmt, percentFmt } from '$lib/intl.svelte'
   let {data}: { data: import('./$types').PageData } = $props()
   let types = $derived(Object.keys(data.sizes))
   const sortFns: ((a: [number, number, number], b: [number, number, number]) => number)[] = [

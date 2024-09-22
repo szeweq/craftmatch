@@ -1,5 +1,5 @@
 <script>
-    import EntryHeader from '$lib/EntryHeader.svelte';
+  import EntryHeader from '$lib/EntryHeader.svelte'
 
   let {data} = $props()
   let types = $derived(Object.keys(data.recipes))

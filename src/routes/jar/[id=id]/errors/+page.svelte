@@ -1,5 +1,5 @@
 <script lang="ts">
-import EntryHeader from '$lib/EntryHeader.svelte';
+import EntryHeader from '$lib/EntryHeader.svelte'
 import { dateTimeFmt } from '$lib/intl.svelte'
 let {data}: { data: import('./$types').PageData } = $props()
 </script>

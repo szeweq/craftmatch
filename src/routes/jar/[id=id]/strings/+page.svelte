@@ -1,6 +1,6 @@
 <script lang="ts">
-  import EntryHeader from '$lib/EntryHeader.svelte';
-import Paginator from '$lib/Paginator.svelte'
+  import EntryHeader from '$lib/EntryHeader.svelte'
+  import Paginator from '$lib/Paginator.svelte'
   import QInput from '$lib/QInput.svelte'
   import SortBtn from '$lib/SortBtn.svelte'
   import { queryable, paginate, sortable } from '$lib/data.svelte'

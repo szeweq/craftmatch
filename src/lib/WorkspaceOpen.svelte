@@ -1,3 +1,13 @@
+<script module>
+const actions = [
+  { name: 'Tags', href: '/all/tags' },
+  { name: 'Inheritance', href: '/all/inheritance' },
+  { name: 'Complexity', href: '/all/complexity' },
+  { name: 'File types', href: '/all/filetypes' },
+  { name: 'Dependencies', href: '/all/deps' },
+  { name: 'Parse times', href: '/dbg/parse_times' },
+]
+</script>
 <script lang="ts">
   import QInput from "$lib/QInput.svelte"
   import SortBtn from "$lib/SortBtn.svelte"
@@ -32,15 +42,6 @@
   }
 
   $effect.pre(ws.loadFiles)
-  
-  const actions = [
-    { name: 'Tags', href: '/all/tags' },
-    { name: 'Inheritance', href: '/all/inheritance' },
-    { name: 'Complexity', href: '/all/complexity' },
-    { name: 'File types', href: '/all/filetypes' },
-    { name: 'Dependencies', href: '/all/deps' },
-    { name: 'Parse times', href: '/dbg/parse_times' },
-  ]
 </script>
 <h1>Workspace opened</h1>
 <div>

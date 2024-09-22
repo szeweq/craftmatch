@@ -1,6 +1,6 @@
 <script lang="ts">
-    import { queryable } from '$lib/data.svelte';
-    import QInput from '$lib/QInput.svelte';
+  import { queryable } from '$lib/data.svelte'
+  import QInput from '$lib/QInput.svelte'
 
   let {data}: { data: import('./$types').PageData } = $props()
   function findUsage(n: number) {

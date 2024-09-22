@@ -1,14 +1,5 @@
-<script lang="ts">
-  import EntryHeader from '$lib/EntryHeader.svelte';
-import { useUnitFmt, percentFmt } from '$lib/intl.svelte';
-  import type { ContentTypes } from '$lib/ws';
-
-  let {data}: { data: import('./$types').PageData } = $props()
-  let allSizes = $derived.by(() => {
-    let as: [number, number, number] = [0, 0, 0]
-    for (const [, j] of Object.entries(data.sizes)) j.forEach((s, i) => as[i] += s)
-    return as
-  })
+<script module>
+  import type { ContentTypes } from '$lib/ws'
   const types: [ContentTypes, string, string][] = [
     ['meta', 'bg-blue-500', 'Metadata'],
     ['classes', 'bg-green-500', 'Class files'],
@@ -16,6 +7,17 @@ import { useUnitFmt, percentFmt } from '$lib/intl.svelte';
     ['data', 'bg-purple-500', 'Data'],
     ['other', 'bg-gray-500', 'Other']
   ]
+</script>
+<script lang="ts">
+  import EntryHeader from '$lib/EntryHeader.svelte'
+  import { useUnitFmt, percentFmt } from '$lib/intl.svelte'
+
+  let {data}: { data: import('./$types').PageData } = $props()
+  let allSizes = $derived.by(() => {
+    let as: [number, number, number] = [0, 0, 0]
+    for (const [, j] of Object.entries(data.sizes)) j.forEach((s, i) => as[i] += s)
+    return as
+  })
   let by = $state(0)
   const byType = ['By count', 'By size (uncompressed)', 'By size (compressed)', 'By compression ratio']
   function typeData(n: [number, number, number], i: number) {
