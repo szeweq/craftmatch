@@ -7,14 +7,12 @@
   const versionRegexp = /^(\d+)(\.(\d+)(\.(\d+))?)?/
   let {data}: { data: import('./$types').PageData } = $props()
   let img = $state<HTMLImageElement | null>(null)
+  const logoUrl = (path: string) => path ? srv.url(`/raw/${data.id}/${path}`) : ""
   function imgError(e: Event & { currentTarget: HTMLImageElement }) {
     e.currentTarget.setAttribute("is-broken", "")
   }
-  function logoUrl(path: string) {
-    return path ? srv.url(`/raw/${data.id}/${path}`) : ""
-  }
   let gradient = imgColors(() => img)
-  $effect(() => gradient.compute())
+  $effect(gradient.compute)
 </script>
 <div class="attop" style={`--top-bg: ${gradient.bg}`}></div>
 <h1>File: {data.name}</h1>
@@ -27,13 +25,13 @@
 {#each data.mods as m (m.slug)}
   <div class="px-2">
     <h2>{m.name}</h2>
+    <div class="text-sm has-before before:me-2 before:inline-block before:i-ms-person-edit" title="Authors">{m.authors ?? "Unknown"}</div>
+    <div class="text-sm has-before before:me-2 before:inline-block before:i-ms-license" title="License">{m.license ?? "Unknown"}</div>
     <p>{m.description}</p>
-    <div class="text-sm">Authors: {m.authors ?? "Unknown"}</div>
-    <div class="text-sm">License: {m.license ?? "Unknown"}</div>
     {#if versionRegexp.test(m.version)}
-      <div class="text-sm">Version: {m.version}</div>
+      <div class="text-xs">Version: {m.version}</div>
     {:else}
-      <div class="c-amber text-sm">The version provided in the mod manifest is not in the correct format: {m.version}</div>
+      <div class="c-amber text-xs">The version provided in the mod manifest is not in the correct format: {m.version}</div>
       {#if m.version.startsWith("$")}
         <div class="c-amber text-xs">YES! The version contains a dollar sign.</div>
       {/if}
