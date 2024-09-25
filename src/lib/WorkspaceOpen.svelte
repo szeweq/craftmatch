@@ -53,7 +53,7 @@ const actions = [
   </nav>
 </div>
 <h2>Files</h2>
-<section class="stick-top rounded-md b-solid b-white/40 b-2 bgvar-c-bg1 p-1 z-1">
+<section class="stick-top rounded-md bgvar-c-bg1 p-1 z-1">
   <QInput {...queryFiles} id="ws-files-q" placeholder="Search files" />
   <SortBtn label="Sort by size" bind:sort={sortFiles.sortID} />
 </section>

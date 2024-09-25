@@ -10,7 +10,7 @@
   const q = queryable(() => namesWithIndex, x => x[0])
 </script>
 <h1>All dependencies</h1>
-<section class="stick-top rounded-md b-solid b-white/40 b-2 bgvar-c-bg1 p-1 z-1">
+<section class="stick-top rounded-md bgvar-c-bg1 p-1 z-1">
   <QInput {...q} placeholder="Search names" />
 </section>
 <ul class="text-sm b-2 b-solid b-white/40 rounded-md mx-0 my-2">

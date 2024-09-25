@@ -10,7 +10,7 @@
   const pag = paginate(sb)
 </script>
 <EntryHeader {data} title="Strings" />
-<section class="stick-top rounded-md b-solid b-white/40 b-2 bgvar-c-bg1 p-1">
+<section class="stick-top rounded-md bgvar-c-bg1 p-1">
   <QInput {...q} />
   <SortBtn label="Sort by count" bind:sort={sb.sortID} />
   <Paginator {pag} />
