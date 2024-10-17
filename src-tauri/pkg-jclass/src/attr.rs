@@ -35,7 +35,7 @@ pub enum JAttr<T> {
     SourceFile(AttrKey<KeySourceFile>),
     StackMapTable,
     Synthetic,
-    Unsupported(PhantomData<T>)
+    Unsupported(PhantomData<fn() -> T>)
 }
 impl<T> JAttr<T> {
     const fn from_name(value: &[u8]) -> Self {
@@ -156,7 +156,7 @@ pub trait UseAttr {
     type Out;
     fn parse(b: Bytes, pool: &ClassPool) -> anyhow::Result<Self::Out>;
 }
-pub struct AttrKey<T: UseAttr>(PhantomData<T>);
+pub struct AttrKey<T: UseAttr>(PhantomData<fn() -> T>);
 
 macro_rules! key_enums {
     ($($name:ident),*) => {
@@ -302,7 +302,7 @@ pub struct Iter<T: Parsing> {
     pool: ClassPool,
     cur: u16,
     len: u16,
-    _t: PhantomData<T>
+    _t: PhantomData<fn() -> T>
 }
 impl<T: Parsing> Iter<T> {
     pub fn new(mut b: Bytes, pool: ClassPool) -> Self {

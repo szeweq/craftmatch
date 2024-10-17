@@ -26,7 +26,7 @@ pub struct JClassReader<R: Read, At: Step> {
     minor: u16,
     major: u16,
     data: ClassData,
-    _t: PhantomData<At>
+    _t: PhantomData<fn() -> At>
 }
 
 impl <R: Read, At: Step> JClassReader<R, At> {

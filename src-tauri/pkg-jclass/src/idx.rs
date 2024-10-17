@@ -18,7 +18,7 @@ pub trait UseIndex<'a> {
     fn at(pool_item: &'a PoolItem) -> Option<Self::Out>;
 }
 
-pub struct Index<R>(pub(in super) NonZeroU16, PhantomData<R>);
+pub struct Index<R>(pub(in super) NonZeroU16, PhantomData<fn() -> R>);
 impl<R> Index<R> {
     pub fn maybe(value: u16) -> Option<Self> {
         NonZeroU16::new(value).map(|x| Self(x, PhantomData))

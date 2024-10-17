@@ -128,7 +128,7 @@ pub struct MemberInfo<T: MemberType> {
     name_idx: Index<Utf8>,
     descriptor_idx: Index<Utf8>,
     attr_count: u16,
-    _t: PhantomData<T>
+    _t: PhantomData<fn() -> T>
 }
 impl<T: MemberType> MemberInfo<T> {
     pub fn name(&self) -> anyhow::Result<&JStr> {
@@ -146,7 +146,7 @@ pub struct AttrInfo<T> {
     b: Bytes,
     pool: ClassPool,
     name_idx: Index<Utf8>,
-    _t: PhantomData<T>
+    _t: PhantomData<fn() -> T>
 }
 impl<T> AttrInfo<T> {
     pub fn name(&self) -> anyhow::Result<&JStr> {

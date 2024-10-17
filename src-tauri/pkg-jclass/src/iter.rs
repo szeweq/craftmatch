@@ -38,7 +38,7 @@ pub struct MemberIter<T: MemberType> {
     pool: ClassPool,
     cur: u16,
     len: u16,
-    _t: PhantomData<T>
+    _t: PhantomData<fn() -> T>
 }
 impl <T: MemberType> MemberIter<T> {
     pub fn from_read(r: &mut impl Read, pool: &ClassPool) -> anyhow::Result<Self> {
@@ -93,7 +93,7 @@ pub struct Attrs<T> {
     pool: ClassPool,
     cur: u16,
     len: u16,
-    _t: PhantomData<T>
+    _t: PhantomData<fn() -> T>
 }
 impl <T> Attrs<T> {
     pub const fn new(b: Bytes, pool: ClassPool, len: u16) -> Self {

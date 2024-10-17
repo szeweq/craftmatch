@@ -113,7 +113,7 @@ impl ExtendSelf for Inheritance {
 }
 iter_extend!(Inheritance);
 
-pub struct IndexStr<T: ?Sized>(pub Arc<str>, pub usize, PhantomData<T>);
+pub struct IndexStr<T: ?Sized>(pub Arc<str>, pub usize, PhantomData<fn() -> T>);
 impl IndexStr<str> {
     pub fn num(self) -> IndexStr<usize> {
         IndexStr(self.0, self.1, PhantomData)
