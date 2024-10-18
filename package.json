@@ -11,21 +11,21 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.0.1"
+    "@tauri-apps/api": "^2.0.2"
   },
   "devDependencies": {
-    "@iconify-json/material-symbols": "^1.2.2",
+    "@iconify-json/material-symbols": "^1.2.4",
     "@sveltejs/adapter-static": "^3.0.5",
-    "@sveltejs/kit": "^2.6.1",
-    "@sveltejs/vite-plugin-svelte": "4.0.0-next.7",
+    "@sveltejs/kit": "^2.7.1",
+    "@sveltejs/vite-plugin-svelte": "4.0.0-next.8",
     "@tsconfig/svelte": "^5.0.4",
-    "@unocss/extractor-svelte": "^0.61.9",
-    "@unocss/preset-icons": "^0.61.9",
-    "svelte": "5.0.0-next.260",
-    "svelte-check": "^4.0.4",
-    "tslib": "^2.7.0",
-    "typescript": "^5.6.2",
-    "unocss": "^0.63.2",
-    "vite": "^5.4.8"
+    "@unocss/extractor-svelte": "^0.63.4",
+    "@unocss/preset-icons": "^0.63.4",
+    "svelte": "5.0.0-next.269",
+    "svelte-check": "^4.0.5",
+    "tslib": "^2.8.0",
+    "typescript": "^5.6.3",
+    "unocss": "^0.63.4",
+    "vite": "^5.4.9"
   }
 }
