@@ -12,20 +12,22 @@ mod imp;
 mod id;
 mod loader;
 mod srv;
+mod err;
 
 use core::str;
 use std::{collections::HashMap, sync::Arc, time::Instant};
+use err::SafeResult;
 use id::Id;
 use tauri::{command, generate_context, generate_handler, Emitter, Listener, Manager, State};
 use workspace::{AllGather, DirWS, Gatherer, WSMode};
 
 #[command]
-async fn auth(app: tauri::AppHandle, state: State<'_, cm_auth::GithubClient>) -> Result<bool, ()> {
-    let r = state.authorize(|c, u| Ok(app.emit("authcode", (c, u))?)).await.map_err(|e| eprintln!("Error in auth: {} / {:?}", e, e));
+async fn auth(app: tauri::AppHandle, state: State<'_, cm_auth::GithubClient>) -> SafeResult<bool> {
+    let r = state.authorize(|c, u| Ok(app.emit("authcode", (c, u))?)).await.map_err(|e| eprintln!("Error in auth: {e} / {e:?}"));
     if r.is_ok() {
         let ghc = state.inner().clone();
         rt::spawn(async move {
-            if let Ok(uinfo) = ghc.user_info().await.map_err(|e| eprintln!("Error in user_info: {} / {:?}", e, e)) {
+            if let Ok(uinfo) = ghc.user_info().await.map_err(|e| eprintln!("Error in user_info: {e} / {e:?}")) {
                 emit_auth(app, Some(uinfo));
             }
         });
@@ -35,9 +37,9 @@ async fn auth(app: tauri::AppHandle, state: State<'_, cm_auth::GithubClient>) ->
 }
 
 #[command]
-async fn logout(app: tauri::AppHandle, state: State<'_, cm_auth::GithubClient>) -> Result<(), ()> {
+async fn logout(app: tauri::AppHandle, state: State<'_, cm_auth::GithubClient>) -> SafeResult<()> {
     state.remove_token().await;
-    rt::spawn(async move { emit_auth(app, None); });
+    emit_auth(app, None);
     Ok(())
 }
 
