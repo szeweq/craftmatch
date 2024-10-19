@@ -18,7 +18,7 @@
   {#each pag as [k, v] (k)}
     <li><details>
       <summary>{k} ({v.total})</summary>
-      <div class="ml-1 pl-3 b-0 b-l-2 b-solid b-white/40">{#each v.code as [c, j] (c)}
+      <div class="ml-1 pl-3 b-0 b-l-2 b-solid b-w/40">{#each v.code as [c, j] (c)}
         <div>{c}: {j}</div>
       {/each}</div>
     </details></li>

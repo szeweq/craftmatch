@@ -17,7 +17,7 @@
         {@const oe = Object.entries(v)}
         <li><details>
           <summary class:c-amber={oe.length < 1}>{k} ({oe.length})</summary>
-          <div class="ml-1 pl-3 b-0 b-l-2 b-solid b-white/40">
+          <div class="ml-1 pl-3 b-0 b-l-2 b-solid b-w/40">
             {#each oe as [k2, v2] (k2)}
               <div class:c-green={v2 === 1} class:c-red={v2 > 1}>{k2}: {v2}</div>
             {/each}

@@ -18,7 +18,7 @@
 <ul class="text-xs px-1">{#each pag as [c, x] (c)}
   <li><details>
     <summary>{JSON.stringify(c)} ({x.length})</summary>
-    <div class="ml-1 pl-3 b-0 b-l-2 b-solid b-white/40">{#each x as u}
+    <div class="ml-1 pl-3 b-0 b-l-2 b-solid b-w/40">{#each x as u}
       <div>{data.classes[u]}</div>
     {/each}</div>
   </details></li>

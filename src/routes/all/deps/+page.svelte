@@ -13,7 +13,7 @@
 <section class="stick-top rounded-md bgvar-c-bg1 p-1 z-1">
   <QInput {...q} placeholder="Search names" />
 </section>
-<ul class="text-sm b-2 b-solid b-white/40 rounded-md mx-0 my-2">
+<ul class="text-sm b-2 b-solid b-w/40 rounded-md mx-0 my-2">
   {#each q as [k, i] (k)}
     {@const info = data.info[i]}
     {@const usage = findUsage(i)}

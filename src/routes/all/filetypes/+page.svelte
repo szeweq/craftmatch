@@ -42,7 +42,7 @@
 <h1>File types</h1>
 <div>For all mods</div>
 <table class="border-collapse w-full">
-  <thead class="b-white/60 b-b-2 b-b-solid">
+  <thead class="b-w/60 b-b-2 b-b-solid">
     <tr class="*:p-1 hover:*:bg-w/10 select-none">
       {#each headNames as h, i}
         <th class={sortBy == i ? orderAsc ? 'sort-asc' : 'sort-desc' : ''} onclick={() => switchSort(i)}>{h}</th>
@@ -57,7 +57,7 @@
       </tr>
     {/each}
   </tbody>
-  <tfoot class="b-t-2 b-t-solid b-white/40">
+  <tfoot class="b-t-2 b-t-solid b-w/40">
     <tr class="*:p-1 [&>td:not(:first-child)]:text-end hover:bg-w/10 hover:*:bg-w/10">
       {@render item("Total", all)}
     </tr>
