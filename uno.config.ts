@@ -20,5 +20,10 @@ export default defineConfig({
     {f: 'flex', g: 'grid', 'stick-top': 'sticky top-0', 'stick-bottom': 'sticky bottom-0'},
     {'has-before': 'before:content-[""]', 'has-after': 'after:content-[""]'},
     [/^bgvar-(.+)$/, ([, c]) => `bg-[var(--${c})]`]
-  ]
+  ],
+  theme: {
+    colors: {
+      w: '#fff',
+    }
+  }
 })
