@@ -49,7 +49,7 @@ impl FileMap {
         let mut z = zip::ZipArchive::new(&mut rs)?;
         let mut m = indexmap::IndexMap::new();
         for i in 0..z.len() {
-            if z.name_for_index(i).is_some_and(|n| n.ends_with(&['/', '\\'])) { continue; }
+            if z.name_for_index(i).is_some_and(|n| n.ends_with(['/', '\\'])) { continue; }
             let file = z.by_index_raw(i)?;
             let comp = match file.compression() {
                 zip::CompressionMethod::Stored => Some(false),
