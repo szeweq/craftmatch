@@ -1,19 +1,16 @@
 <script lang="ts">
-  import { invoke } from "@tauri-apps/api/core"
-  import { ws } from "./workspace.svelte"
+  import { ws, dirs } from "./workspace.svelte"
   let moddirs = $state<string[]>([])
   let select = $state<string | null>(null)
   $effect.pre(() => {
-    if (moddirs.length === 0) invoke<string[]>("mod_dirs", {kind: null}).then(x => {
-      moddirs = x
-    })
+    if (moddirs.length === 0) dirs<string[]>().then(x => moddirs = x)
   })
   const choose = (e: MouseEvent) => {
     const dir_target = (e.target as HTMLElement).dataset.val
     if (dir_target) {
       e.preventDefault()
       select = dir_target
-      invoke("mod_dirs", {kind: dir_target})
+      dirs(dir_target)
     }
   }
 </script>

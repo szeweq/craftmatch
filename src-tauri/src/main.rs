@@ -50,7 +50,7 @@ fn emit_auth(app: tauri::AppHandle, info: Option<(Box<str>, Box<str>, u8)>) {
 }
 
 #[command]
-async fn mod_dirs(app: tauri::AppHandle, state: State<'_, DirWS>, kind: imp::ReqModDirs) -> Result<imp::RespModDirs, ()> {
+async fn dirs(app: tauri::AppHandle, state: State<'_, DirWS>, kind: imp::ReqModDirs) -> Result<imp::RespModDirs, ()> {
     match kind {
         imp::ReqModDirs::List => {
             let mut v = imp::all_minecraft_dirs();
@@ -249,7 +249,7 @@ fn main() {
             Ok(())
         })
         .invoke_handler(generate_handler![
-            auth, logout, mod_dirs, workspace,
+            auth, logout, dirs, workspace,
             ws_files, ws_namespaces, ws_show, ws_name, ws_mod_data, ws_dep_map, ws_str_index, ws_mod_errors, ws_file_type_sizes, ws_content_sizes, ws_inheritance, ws_complexity, ws_tags, ws_mod_entries, ws_recipes, ws_mod_playable,
             dbg_parse_times, srv_port
         ])

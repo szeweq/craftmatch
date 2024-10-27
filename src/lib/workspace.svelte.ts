@@ -31,3 +31,5 @@ export const ws = {
   open() { return invoke("workspace", {open: true}) },
   close() { return invoke("workspace", {open: false}) },
 }
+
+export const dirs = <T>(d: string = null) => invoke<T>("dirs", {kind: d})
