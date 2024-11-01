@@ -1,3 +1,6 @@
+<script module>
+  const dur = {duration: 200}
+</script>
 <script>
   import { navigating } from "$app/stores"
   import { fade } from "svelte/transition"
@@ -7,9 +10,7 @@
   $effect.pre(() => navigating.subscribe(n => load = !!n))
 </script>
 {#if load}
-<div class="fixed inset-0 left-[var(--s-aside)] z-99 darken" in:fade={{duration: 200}} out:fade={{duration: 200}}>
-  <div class="f items-center justify-center text-2xl p-1 m-4">
-    <img src={loadingSvg} alt="Loading" width="32" height="32" />
-  </div>
+<div class="f justify-center fixed inset-0 left-[var(--s-aside)] z-99 darken" in:fade={dur} out:fade={dur}>
+  <img class="m-4" src={loadingSvg} alt="Loading" width="32" height="32" />
 </div>
 {/if}
