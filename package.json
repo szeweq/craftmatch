@@ -14,9 +14,9 @@
     "@tauri-apps/api": "^2.0.3"
   },
   "devDependencies": {
-    "@iconify-json/material-symbols": "^1.2.5",
+    "@iconify-json/material-symbols": "^1.2.6",
     "@sveltejs/adapter-static": "^3.0.6",
-    "@sveltejs/kit": "^2.7.3",
+    "@sveltejs/kit": "^2.7.4",
     "@sveltejs/vite-plugin-svelte": "^4.0.0",
     "@tsconfig/svelte": "^5.0.4",
     "@unocss/extractor-svelte": "^0.63.6",
