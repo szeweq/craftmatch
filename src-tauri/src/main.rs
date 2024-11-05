@@ -15,7 +15,7 @@ mod srv;
 mod err;
 
 use core::str;
-use std::{collections::HashMap, sync::Arc, time::Instant};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use err::SafeResult;
 use id::Id;
 use tauri::{command, generate_context, generate_handler, Emitter, Listener, Manager, State};
@@ -49,44 +49,41 @@ fn emit_auth(app: tauri::AppHandle, info: Option<(Box<str>, Box<str>, u8)>) {
     }
 }
 
+fn emit_ws_open(app: tauri::AppHandle, dws: &DirWS, dir_path: PathBuf) {
+    if let Err(e) = dws.prepare(dir_path) {
+        eprintln!("Opening workspace error: {e}");
+    }
+    if let Err(e) = app.emit("ws-open", true) {
+        eprintln!("Opening workspace error: {e}");
+    }
+}
+
 #[command]
-async fn dirs(app: tauri::AppHandle, state: State<'_, DirWS>, kind: imp::ReqModDirs) -> Result<imp::RespModDirs, ()> {
+fn dirs(app: tauri::AppHandle, state: State<'_, DirWS>, kind: imp::ReqModDirs) -> imp::RespModDirs {
     match kind {
         imp::ReqModDirs::List => {
             let mut v = imp::all_minecraft_dirs();
             v.retain(|p| imp::get_mods_dir(p).is_some());
-            Ok(imp::RespModDirs::Listed(v))
+            imp::RespModDirs::Listed(v)
         }
         imp::ReqModDirs::Select(dir) => {
             let dws = state.inner().clone();
             rt::spawn(async move {
                 let Some(mdir) = imp::get_mods_dir(&dir) else { return; };
-                let r = dws.prepare(mdir);
-                if let Err(e) = r {
-                    eprintln!("Opening workspace error: {e}");
-                }
-                if let Err(e) = app.emit("ws-open", true) {
-                    eprintln!("Opening workspace error: {e}");
-                }
+                emit_ws_open(app, &dws, mdir);
             });
-            Ok(imp::RespModDirs::Selected)
+            imp::RespModDirs::Selected
         }
     }
 }
 
 #[command]
-async fn workspace(app: tauri::AppHandle, state: State<'_, DirWS>, open: bool) -> Result<(), ()> {
+fn workspace(app: tauri::AppHandle, state: State<'_, DirWS>, open: bool) {
     let dws = state.inner().clone();
     rt::spawn(async move {
         if open {
             let Some(dir) = rfd::AsyncFileDialog::new().pick_folder().await else { return };
-            let r = dws.prepare(dir.into());
-            if let Err(e) = r {
-                eprintln!("Opening workspace error: {e}");
-            }
-            if let Err(e) = app.emit("ws-open", true) {
-                eprintln!("Opening workspace error: {e}");
-            }
+            emit_ws_open(app, &dws, dir.into());
         } else {
             dws.reset();
             if let Err(e) = app.emit("ws-open", false) {
@@ -94,7 +91,6 @@ async fn workspace(app: tauri::AppHandle, state: State<'_, DirWS>, open: bool) -
             }
         }
     });
-    Ok(())
 }
 
 #[command]
@@ -108,8 +104,8 @@ async fn ws_files(state: State<'_, DirWS>) -> Result<Vec<(Id, String, u64)>, ()>
 }
 
 #[command]
-async fn ws_namespaces(state: State<'_, DirWS>) -> Result<Vec<Box<str>>, ()> {
-    Ok(state.namespace_keys())
+fn ws_namespaces(state: State<'_, DirWS>) -> Vec<Box<str>> {
+    state.namespace_keys()
 }
 
 fn ws_item<T: Send + Sync + 'static>(state: State<'_, DirWS>, id: Id, gfn: Gatherer<T>) -> anyhow::Result<Arc<T>> {
@@ -117,10 +113,11 @@ fn ws_item<T: Send + Sync + 'static>(state: State<'_, DirWS>, id: Id, gfn: Gathe
 }
 
 #[command]
-async fn ws_show(state: State<'_, DirWS>, id: Id) -> Result<(), ()> {
+fn ws_show(state: State<'_, DirWS>, id: Id) -> bool {
     state.entry_path(id)
         .and_then(|path| Ok(opener::reveal(path)?))
         .map_err(|e| eprintln!("Error in ws_show: {e}"))
+        .is_ok()
 }
 
 #[command]
@@ -164,45 +161,28 @@ fn ws_dep_map(state: State<'_, DirWS>, mode: WSMode) -> Option<Arc<loader::DepMa
 }
 #[command]
 fn ws_content_sizes(state: State<'_, DirWS>, mode: WSMode) -> Option<Arc<extract::ModContentSizes>> {
-    let mods = state.mods();
-    mode.gather_from_entries(mods, workspace::gather_content_sizes)
+    mode.gather_from_entries(state.mods(), workspace::gather_content_sizes)
         .inspect_err(|e| eprintln!("Error in ws_content_sizes: {e}")).ok()
 }
 #[command]
 async fn ws_inheritance(state: State<'_, DirWS>, mode: WSMode) -> Result<Arc<ext::Inheritance>, ()> {
-    let now = Instant::now();
-    let mods = state.mods();
-    let x = mode.gather_from_entries(mods, workspace::gather_inheritance)
-        .map_err(|e| eprintln!("Error in ws_inheritance: {e}"));
-    println!("gather_inheritance took {:?}", now.elapsed());
-    x
+    mode.gather_from_entries(state.mods(), workspace::gather_inheritance)
+        .map_err(|e| eprintln!("Error in ws_inheritance: {e}"))
 }
 #[command]
 async fn ws_complexity(state: State<'_, DirWS>, mode: WSMode) -> Result<Arc<jvm::Complexity>, ()> {
-    let now = Instant::now();
-    let mods = state.mods();
-    let x = mode.gather_from_entries(mods, workspace::gather_complexity)
-        .map_err(|e| eprintln!("Error in ws_complexity: {e}"));
-    println!("gather_complexity took {:?}", now.elapsed());
-    x
+    mode.gather_from_entries(state.mods(), workspace::gather_complexity)
+        .map_err(|e| eprintln!("Error in ws_complexity: {e}"))
 }
 #[command]
 async fn ws_tags(state: State<'_, DirWS>, mode: WSMode) -> Result<Arc<extract::TagsList>, ()> {
-    let now = Instant::now();
-    let mods = state.mods();
-    let x = mode.gather_from_entries(mods, workspace::gather_tags)
-        .map_err(|e| eprintln!("Error in ws_tags: {e}"));
-    println!("gather_tags took {:?}", now.elapsed());
-    x
+    mode.gather_from_entries(state.mods(), workspace::gather_tags)
+        .map_err(|e| eprintln!("Error in ws_tags: {e}"))
 }
 #[command]
 async fn ws_recipes(state: State<'_, DirWS>, mode: WSMode) -> Result<Arc<extract::RecipeTypeMap>, ()> {
-    let now = Instant::now();
-    let mods = state.mods();
-    let x = mode.gather_from_entries(mods, workspace::gather_recipes)
-        .map_err(|e| eprintln!("Error in ws_recipes: {e}"));
-    println!("gather_recipes took {:?}", now.elapsed());
-    x
+    mode.gather_from_entries(state.mods(), workspace::gather_recipes)
+        .map_err(|e| eprintln!("Error in ws_recipes: {e}"))
 }
 
 #[command]
