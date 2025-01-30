@@ -50,7 +50,7 @@ impl Extension {
     }
     #[inline]
     pub fn matches<P: AsRef<OsStr> + ?Sized>(&self, s: &P) -> bool {
-        Path::new(s).extension().map_or(false, |ext| ext.eq_ignore_ascii_case(self.str()))
+        Path::new(s).extension().is_some_and(|ext| ext.eq_ignore_ascii_case(self.str()))
     }
 }
 

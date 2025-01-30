@@ -30,8 +30,7 @@ fn select_port() -> Option<u16> {
     while port < 0x8000 {
         let ip = SocketAddrV4::new(Ipv4Addr::LOCALHOST, port);
         if std::net::TcpListener::bind(ip)
-            .and_then(|x| x.local_addr())
-            .map_or(false, |x| x.port() == port) {
+            .and_then(|x| x.local_addr()).is_ok_and(|x| x.port() == port) {
             return Some(port);
         }
         port += 1;
