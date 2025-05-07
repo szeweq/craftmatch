@@ -11,3 +11,4 @@ oauth2.workspace = true
 tokio.workspace = true
 opener.workspace = true
 indexmap = {workspace = true, features = ["serde"] }
+reqwest = {workspace = true, features = ["json"]}

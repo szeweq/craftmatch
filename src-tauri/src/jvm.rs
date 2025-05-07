@@ -1,6 +1,6 @@
 use std::{borrow::Cow, collections::HashMap, io::{Read, Seek}, sync::Mutex, time};
 
-use cafebabe::{attributes::{AnnotationElement, AnnotationElementValue, AttributeData}, descriptor::{FieldType, Ty}};
+use cafebabe::{attributes::{AnnotationElement, AnnotationElementValue, AttributeData}, descriptors::{ClassName, FieldDescriptor, FieldType, UnqualifiedSegment}};
 use cm_zipext::FileMap;
 use once_cell::sync::Lazy;
 use serde::Serialize;
@@ -97,7 +97,7 @@ impl Complexity {
                 let mn = m.name.replacen("lambda$", "lambda ", 1);
                 let x = &m.descriptor;
                 total += bc.opcodes.len();
-                v.push(((format!("{mn} {x}")).into_boxed_str(), bc.opcodes.len()));
+                v.push(((format!("{mn} {x:?}")).into_boxed_str(), bc.opcodes.len()));
             }
             if (s.ends_with("package-info") || s.ends_with("module-info")) && v.is_empty() { return; }
             self.0.insert(s.to_string().into_boxed_str(), ClassCounting { total, fields: cf.fields.len(), methods: cf.methods.len(), code: v });
@@ -123,7 +123,14 @@ pub fn gather_complexity<RS: Read + Seek>(fm: &FileMap, rs: &mut RS) -> anyhow::
 }
 
 fn find_annotation<'a>(cf: &'a CFOwned, name: &str) -> Option<&'a cafebabe::attributes::Annotation<'a>> {
-    let typedesc = FieldType::Ty(Ty::Object(Cow::Borrowed(name)));
+    let typedesc = FieldDescriptor {
+        dimensions: 0,
+        field_type: FieldType::Object(ClassName {
+            segments: vec![UnqualifiedSegment {
+                name: Cow::Borrowed(name)
+            }]
+        })
+    };
     cf.attributes.iter().find_map(|a| {
         match &a.data {
             AttributeData::RuntimeVisibleAnnotations(van) |
