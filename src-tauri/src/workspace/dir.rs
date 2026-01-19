@@ -1,4 +1,8 @@
-use std::{fs, path::{Path, PathBuf}, sync::Arc};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use indexmap::IndexMap;
 use parking_lot::{RwLock, RwLockReadGuard};
@@ -19,7 +23,7 @@ pub struct DirWS {
     dir_path: Arc<RwLock<Box<Path>>>,
     mod_entries: LockMap<FileInfo>,
     filemaps: LockMap<Arc<cm_zipext::FileMap>>,
-    namespaces: Namespaces
+    namespaces: Namespaces,
 }
 impl DirWS {
     pub fn new() -> Self {
@@ -33,7 +37,7 @@ impl DirWS {
     pub const fn mods(&self) -> &LockMap<FileInfo> {
         &self.mod_entries
     }
-    pub fn mods_read(&self) -> RwLockReadGuard<IndexMap<Id, FileInfo>> {
+    pub fn mods_read(&'_ self) -> RwLockReadGuard<'_, IndexMap<Id, FileInfo>> {
         self.mod_entries.read()
     }
     pub fn reset(&self) {
@@ -48,34 +52,48 @@ impl DirWS {
     pub fn prepare(&self, dir_path: PathBuf) -> anyhow::Result<()> {
         *self.dir_path.write() = dir_path.into_boxed_path();
         let rdir = fs::read_dir(&*self.dir_path.read())?;
-        let mut jars = rdir.filter_map(|entry| {
-            let entry = entry.ok()?;
-            if entry.path().is_dir() { return None; }
-            if ext::Extension::Jar.matches(&entry.file_name()) {
-                let id = id_from_time(&entry.path()).map_err(|e| {
-                    eprintln!("{}: {}", entry.path().display(), e);
-                }).ok()?;
-                let fi = FileInfo::new(entry.path());
-                Some((id, fi))
-            } else {
-                None
-            }
-        }).collect::<IndexMap<_, _>>();
+        let mut jars = rdir
+            .filter_map(|entry| {
+                let entry = entry.ok()?;
+                if entry.path().is_dir() {
+                    return None;
+                }
+                if ext::Extension::Jar.matches(&entry.file_name()) {
+                    let id = id_from_time(&entry.path())
+                        .map_err(|e| {
+                            eprintln!("{}: {}", entry.path().display(), e);
+                        })
+                        .ok()?;
+                    let fi = FileInfo::new(entry.path());
+                    Some((id, fi))
+                } else {
+                    None
+                }
+            })
+            .collect::<IndexMap<_, _>>();
         jars.sort_unstable_keys();
 
-        let fmaps = jars.par_iter_mut().filter_map(|(id, fi)| {
-            let fm = cm_zipext::FileMap::from_zip_read_seek(fi.file_mem().ok()?).ok()?;
-            let afm = Arc::new(fm);
-            fi.filemap = Arc::downgrade(&afm);
-            Some((*id, afm))
-        }).collect::<IndexMap<_, _>>();
+        let fmaps = jars
+            .par_iter_mut()
+            .filter_map(|(id, fi)| {
+                let fm = cm_zipext::FileMap::from_zip_read_seek(fi.file_mem().ok()?).ok()?;
+                let afm = Arc::new(fm);
+                fi.filemap = Arc::downgrade(&afm);
+                Some((*id, afm))
+            })
+            .collect::<IndexMap<_, _>>();
 
-        let ns = jars.par_iter_mut()
+        let ns = jars
+            .par_iter_mut()
             .filter_map(|(id, fi)| Some((*id, fi.get_or_gather(gather_mod_data).ok()?)))
-            .flat_map(|(id, md)| (match &*md {
-                ModTypeData::Fabric(d) => d.par_iter(),
-                ModTypeData::Forge(d) | ModTypeData::Neoforge(d) => d.par_iter(),
-            }).map(|d| (Box::from(d.slug()), id)).collect::<Vec<_>>())
+            .flat_map(|(id, md)| {
+                (match &*md {
+                    ModTypeData::Fabric(d) => d.par_iter(),
+                    ModTypeData::Forge(d) | ModTypeData::Neoforge(d) => d.par_iter(),
+                })
+                .map(|d| (Box::from(d.slug()), id))
+                .collect::<Vec<_>>()
+            })
             .collect::<IndexMap<_, _>>();
 
         *self.mod_entries.write() = jars;
@@ -85,7 +103,9 @@ impl DirWS {
     }
     pub fn entry_path(&self, id: Id) -> anyhow::Result<Box<Path>> {
         let fe = self.mod_entries.read();
-        let Some(fi) = fe.get(&id) else { anyhow::bail!("file not found") };
+        let Some(fi) = fe.get(&id) else {
+            anyhow::bail!("file not found")
+        };
         let p = fi.path.clone();
         drop(fe);
         Ok(p)

@@ -10,5 +10,10 @@ serde_json.workspace = true
 oauth2.workspace = true
 tokio.workspace = true
 opener.workspace = true
-indexmap = {workspace = true, features = ["serde"] }
-reqwest = {workspace = true, features = ["json"]}
+indexmap = { workspace = true, features = ["serde"] }
+reqwest = { workspace = true, features = ["json"] }
+
+[lints.clippy]
+nursery = { level = "warn", priority = -1 }
+clone_on_ref_ptr = "warn"
+#pedantic = { level = "warn", priority = -1 }

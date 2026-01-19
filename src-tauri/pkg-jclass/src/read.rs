@@ -1,8 +1,14 @@
-use std::{io::Read, marker::PhantomData};
+use super::{
+    idx::Index,
+    iter::{Interfaces, MemberIter},
+    jtype,
+    pool::{ClassPool, PoolItem},
+    read_attr_info, read_magic, skip_attr_info, skip_member_info, Attrs, ClassData, JStr,
+};
 use anyhow::Result;
 use byteorder::{ReadBytesExt, BE};
 use bytes::Buf;
-use super::{idx::Index, iter::{Interfaces, MemberIter}, jtype, pool::{ClassPool, PoolItem}, read_attr_info, read_magic, skip_attr_info, skip_member_info, Attrs, ClassData, JStr};
+use std::{io::Read, marker::PhantomData};
 
 pub trait Step {
     type Next: Step;
@@ -10,7 +16,9 @@ pub trait Step {
 macro_rules! step {
     ($at:ident, $next:ty) => {
         pub enum $at {}
-        impl Step for $at { type Next = $next; }
+        impl Step for $at {
+            type Next = $next;
+        }
     };
 }
 
@@ -18,7 +26,9 @@ step!(AtInterfaces, AtFields);
 step!(AtFields, AtMethods);
 step!(AtMethods, AtAttributes);
 step!(AtAttributes, ());
-impl Step for () { type Next = (); }
+impl Step for () {
+    type Next = ();
+}
 
 pub struct JClassReader<R: Read, At: Step> {
     r: R,
@@ -26,22 +36,22 @@ pub struct JClassReader<R: Read, At: Step> {
     minor: u16,
     major: u16,
     data: ClassData,
-    _t: PhantomData<fn() -> At>
+    _t: PhantomData<fn() -> At>,
 }
 
-impl <R: Read, At: Step> JClassReader<R, At> {
+impl<R: Read, At: Step> JClassReader<R, At> {
     #[inline]
     #[allow(clippy::missing_const_for_fn)]
     fn step(self) -> JClassReader<R, At::Next> {
         unsafe {
-            let p = &self as *const Self as *const JClassReader<R, At::Next>;
+            let p = (&raw const self).cast::<JClassReader<R, At::Next>>();
             std::mem::forget(self);
             std::ptr::read(p)
         }
     }
 }
 
-impl <R: Read, At: Step> JClassReader<R, At> {
+impl<R: Read, At: Step> JClassReader<R, At> {
     pub fn class_name(&self) -> Result<&JStr> {
         self.pool.get(self.pool.get(self.data.class_ref)?)
     }
@@ -52,18 +62,18 @@ impl <R: Read, At: Step> JClassReader<R, At> {
         }
     }
     #[inline]
-    pub fn iter_pool(&self) -> std::slice::Iter<PoolItem> {
+    pub fn iter_pool(&'_ self) -> std::slice::Iter<'_, PoolItem> {
         self.pool.iter()
     }
 }
 
-impl <R: Read> JClassReader<R, AtInterfaces> {
+impl<R: Read> JClassReader<R, AtInterfaces> {
     pub fn new(mut r: R) -> Result<Self> {
         read_magic(&mut r)?;
         let mut cv = [0u16; 3];
         let [minor, major, pool_count] = match r.read_u16_into::<BE>(&mut cv) {
             Ok(()) => cv,
-            Err(e) => return Err(e.into())
+            Err(e) => return Err(e.into()),
         };
         let mut pool = Vec::with_capacity(pool_count as usize);
         pool.push(PoolItem::None);
@@ -72,18 +82,29 @@ impl <R: Read> JClassReader<R, AtInterfaces> {
             r.read_exact(std::slice::from_mut(&mut tag))?;
             pool.push(PoolItem::read_from(tag, major, &mut r)?);
             if tag == 5 || tag == 6 {
-                pool.push(PoolItem::Reserved)
+                pool.push(PoolItem::Reserved);
             }
         }
         let pool = ClassPool::from(pool.into_boxed_slice());
         let mut cv = [0u16; 3];
         let [access_flags, class_ref, super_ref] = match r.read_u16_into::<BE>(&mut cv) {
             Ok(()) => cv,
-            Err(e) => return Err(e.into())
+            Err(e) => return Err(e.into()),
         };
         let class_ref = class_ref.try_into()?;
         let super_ref = Index::maybe(super_ref);
-        Ok(Self { r, pool, minor, major, data: ClassData { access_flags, class_ref, super_ref }, _t: PhantomData })
+        Ok(Self {
+            r,
+            pool,
+            minor,
+            major,
+            data: ClassData {
+                access_flags,
+                class_ref,
+                super_ref,
+            },
+            _t: PhantomData,
+        })
     }
 
     #[inline]
@@ -99,7 +120,7 @@ impl <R: Read> JClassReader<R, AtInterfaces> {
         Ok(self.step())
     }
 }
-impl <R: Read> JClassReader<R, AtFields> {
+impl<R: Read> JClassReader<R, AtFields> {
     #[inline]
     pub fn fields(mut self) -> Result<(JClassReader<R, AtMethods>, MemberIter<jtype::OfField>)> {
         let mi = MemberIter::from_read(&mut self.r, &self.pool)?;
@@ -110,9 +131,11 @@ impl <R: Read> JClassReader<R, AtFields> {
         Ok(self.step())
     }
 }
-impl <R: Read> JClassReader<R, AtMethods> {
+impl<R: Read> JClassReader<R, AtMethods> {
     #[inline]
-    pub fn methods(mut self) -> Result<(JClassReader<R, AtAttributes>, MemberIter<jtype::OfMethod>)> {
+    pub fn methods(
+        mut self,
+    ) -> Result<(JClassReader<R, AtAttributes>, MemberIter<jtype::OfMethod>)> {
         let mi = MemberIter::from_read(&mut self.r, &self.pool)?;
         Ok((self.step(), mi))
     }
@@ -121,7 +144,7 @@ impl <R: Read> JClassReader<R, AtMethods> {
         Ok(self.step())
     }
 }
-impl <R: Read> JClassReader<R, AtAttributes> {
+impl<R: Read> JClassReader<R, AtAttributes> {
     #[inline]
     pub fn attributes(mut self) -> Result<(JClassReader<R, ()>, Attrs<jtype::OfClass>)> {
         let mut bmut = bytes::BytesMut::new();

@@ -1,7 +1,13 @@
 use std::{sync::Arc, time};
 
 use indexmap::IndexMap;
-use oauth2::{basic::{BasicClient, BasicTokenResponse}, reqwest::{self, header}, AccessToken, AuthUrl, ClientId, DeviceCode, DeviceCodeErrorResponse, DeviceCodeErrorResponseType, EndpointNotSet, EndpointSet, Scope, StandardDeviceAuthorizationResponse, TokenResponse, TokenUrl};
+use oauth2::{
+    basic::{BasicClient, BasicTokenResponse},
+    reqwest::{self, header},
+    AccessToken, AuthUrl, ClientId, DeviceCode, DeviceCodeErrorResponse,
+    DeviceCodeErrorResponseType, EndpointNotSet, EndpointSet, Scope,
+    StandardDeviceAuthorizationResponse, TokenResponse, TokenUrl,
+};
 use serde::{Deserialize, Serialize};
 use tokio::sync::{RwLock, RwLockReadGuard};
 
@@ -16,39 +22,61 @@ pub struct GithubClient {
 impl GithubClient {
     pub fn setup() -> anyhow::Result<Self> {
         let auth = BasicClient::new(ClientId::new(GH_CLIENT_ID.to_string()))
-            .set_auth_uri(AuthUrl::new("https://github.com/login/oauth/authorize".to_string())?)
-            .set_token_uri(TokenUrl::new("https://github.com/login/oauth/access_token".to_string())?)
-            .set_device_authorization_url(oauth2::DeviceAuthorizationUrl::new("https://github.com/login/device/code".to_string())?);
+            .set_auth_uri(AuthUrl::new(
+                "https://github.com/login/oauth/authorize".to_string(),
+            )?)
+            .set_token_uri(TokenUrl::new(
+                "https://github.com/login/oauth/access_token".to_string(),
+            )?)
+            .set_device_authorization_url(oauth2::DeviceAuthorizationUrl::new(
+                "https://github.com/login/device/code".to_string(),
+            )?);
 
         let http = reqwest::ClientBuilder::new()
             .redirect(reqwest::redirect::Policy::none())
             .build()?;
 
-        Ok(Self { auth: Arc::new(auth), http, token: Arc::new(RwLock::new(None)) })
+        Ok(Self {
+            auth: Arc::new(auth),
+            http,
+            token: Arc::new(RwLock::new(None)),
+        })
     }
 
     pub async fn remove_token(&self) {
         *self.token.write().await = None;
     }
 
-    pub async fn authorize<F: Fn(&str, &str) -> anyhow::Result<()> + Send>(&self, send_code: F) -> anyhow::Result<()> {
-        let details: StandardDeviceAuthorizationResponse = self.auth.exchange_device_code()
-        .add_scope(Scope::new("user".to_string()))
-        .add_scope(Scope::new("public_repo".to_string()))
-        .request_async(&self.http).await?;
+    pub async fn authorize<F: Fn(&str, &str) -> anyhow::Result<()> + Send>(
+        &self,
+        send_code: F,
+    ) -> anyhow::Result<()> {
+        let details: StandardDeviceAuthorizationResponse = self
+            .auth
+            .exchange_device_code()
+            .add_scope(Scope::new("user".to_string()))
+            .add_scope(Scope::new("public_repo".to_string()))
+            .request_async(&self.http)
+            .await?;
 
         let uri = details.verification_uri().to_string();
 
         opener::open_browser(&uri)?;
         send_code(details.user_code().secret(), &uri)?;
 
-        let token_resp = gh_access_device_token(&self.http, details.device_code(), details.interval(), details.expires_in()).await?;
+        let token_resp = gh_access_device_token(
+            &self.http,
+            details.device_code(),
+            details.interval(),
+            details.expires_in(),
+        )
+        .await?;
         *self.token.write().await = Some(token_resp.access_token().clone());
 
         Ok(())
     }
 
-    async fn token(&self) -> anyhow::Result<RwLockReadGuard<AccessToken>> {
+    async fn token(&'_ self) -> anyhow::Result<RwLockReadGuard<'_, AccessToken>> {
         let rg = self.token.read().await;
         if rg.as_ref().is_some() {
             Ok(RwLockReadGuard::map(rg, |x| x.as_ref().unwrap()))
@@ -58,11 +86,17 @@ impl GithubClient {
     }
 
     async fn gql_query(&self, query: &str) -> anyhow::Result<reqwest::Response> {
-        let token = self.token().await?;
-        let resp = self.http.post("https://api.github.com/graphql").bearer_auth(token.secret())
-            .header(header::USER_AGENT, header::HeaderValue::from_static("craftmatch/0.1.0"))
+        let resp = self
+            .http
+            .post("https://api.github.com/graphql")
+            .bearer_auth(self.token().await?.secret())
+            .header(
+                header::USER_AGENT,
+                header::HeaderValue::from_static("craftmatch/0.1.0"),
+            )
             .json(&Query { query })
-            .send().await?;
+            .send()
+            .await?;
 
         Ok(resp)
     }
@@ -71,7 +105,10 @@ impl GithubClient {
         let resp = self.gql_query("query{viewer{name,avatarUrl},user(login:\"szeweq\"){viewerIsSponsoring,viewerIsFollowing},repository(owner:\"szeweq\",name:\"craftmatch\"){viewerHasStarred}}").await?;
 
         if !resp.status().is_success() {
-            return Err(anyhow::anyhow!("Failed to get user info: {}", resp.text().await?));
+            return Err(anyhow::anyhow!(
+                "Failed to get user info: {}",
+                resp.text().await?
+            ));
         }
         let b = resp.bytes().await?;
 
@@ -85,27 +122,56 @@ impl GithubClient {
         let viewer = map_get_val(&data, "viewer")?;
         let user = map_get_val(&data, "user")?;
         let repository = map_get_val(&data, "repository")?;
-        let name = viewer.get("name").and_then(|v| v.as_str()).unwrap_or_default();
-        let avatar_url = viewer.get("avatarUrl").and_then(|v| v.as_str()).unwrap_or_default();
-        let is_sponsoring = user.get("viewerIsSponsoring").and_then(|v| v.as_bool()).unwrap_or_default();
-        let is_following = user.get("viewerIsFollowing").and_then(|v| v.as_bool()).unwrap_or_default();
-        let has_starred = repository.get("viewerHasStarred").and_then(|v| v.as_bool()).unwrap_or_default();
-        Ok((name.into(), avatar_url.into(), ((is_sponsoring as u8) << 2) | ((is_following as u8) << 1) | (has_starred as u8)))
+        let name = viewer
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default();
+        let avatar_url = viewer
+            .get("avatarUrl")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default();
+        let is_sponsoring = user
+            .get("viewerIsSponsoring")
+            .and_then(|v| v.as_bool())
+            .unwrap_or_default();
+        let is_following = user
+            .get("viewerIsFollowing")
+            .and_then(|v| v.as_bool())
+            .unwrap_or_default();
+        let has_starred = repository
+            .get("viewerHasStarred")
+            .and_then(|v| v.as_bool())
+            .unwrap_or_default();
+        Ok((
+            name.into(),
+            avatar_url.into(),
+            ((is_sponsoring as u8) << 2) | ((is_following as u8) << 1) | (has_starred as u8),
+        ))
     }
 }
 
 #[allow(dead_code)]
 fn default_headers() -> reqwest::header::HeaderMap {
     let mut headers = reqwest::header::HeaderMap::new();
-    headers.insert(header::USER_AGENT, header::HeaderValue::from_static("craftmatch/0.1.0"));
-    headers.insert(header::ACCEPT, header::HeaderValue::from_static("application/vnd.github+json"));
-    headers.insert("X-GitHub-Api-Version", header::HeaderValue::from_static("2022-11-28"));
+    headers.insert(
+        header::USER_AGENT,
+        header::HeaderValue::from_static("craftmatch/0.1.0"),
+    );
+    headers.insert(
+        header::ACCEPT,
+        header::HeaderValue::from_static("application/vnd.github+json"),
+    );
+    headers.insert(
+        "X-GitHub-Api-Version",
+        header::HeaderValue::from_static("2022-11-28"),
+    );
     headers
 }
 
 #[inline]
 fn map_get_val<'a, T>(m: &'a IndexMap<String, T>, k: &str) -> anyhow::Result<&'a T> {
-    m.get(k).ok_or_else(|| anyhow::anyhow!("Failed to get {} in map", k))
+    m.get(k)
+        .ok_or_else(|| anyhow::anyhow!("Failed to get {} in map", k))
 }
 
 #[derive(Deserialize)]
@@ -123,7 +189,12 @@ impl GitHubTokenResult {
     }
 }
 
-async fn gh_access_device_token(cli: &reqwest::Client, devcode: &DeviceCode, mut interval: time::Duration, expire: time::Duration) -> anyhow::Result<BasicTokenResponse> {
+async fn gh_access_device_token(
+    cli: &reqwest::Client,
+    devcode: &DeviceCode,
+    mut interval: time::Duration,
+    expire: time::Duration,
+) -> anyhow::Result<BasicTokenResponse> {
     let timeout_instant = std::time::Instant::now() + expire;
 
     loop {
@@ -132,7 +203,6 @@ async fn gh_access_device_token(cli: &reqwest::Client, devcode: &DeviceCode, mut
             break Err(anyhow::anyhow!("Timed out waiting for access token."));
         }
 
-        
         let resp = cli.post("https://github.com/login/oauth/access_token")
             .header(reqwest::header::ACCEPT, reqwest::header::HeaderValue::from_static("application/json"))
             .header(reqwest::header::CONTENT_TYPE, reqwest::header::HeaderValue::from_static("application/x-www-form-urlencoded"))
@@ -145,14 +215,14 @@ async fn gh_access_device_token(cli: &reqwest::Client, devcode: &DeviceCode, mut
                 match body.into_result() {
                     Ok(token) => break Ok(token),
                     Err(ser) => match ser.error() {
-                        DeviceCodeErrorResponseType::AuthorizationPending => {},
+                        DeviceCodeErrorResponseType::AuthorizationPending => {}
                         DeviceCodeErrorResponseType::SlowDown => {
                             interval += time::Duration::from_secs(5);
                         }
                         _ => {
                             break Err(anyhow::anyhow!("Error: {}", ser));
                         }
-                    }
+                    },
                 }
             }
         }
@@ -163,10 +233,10 @@ async fn gh_access_device_token(cli: &reqwest::Client, devcode: &DeviceCode, mut
 
 #[derive(Serialize)]
 struct Query<'a> {
-    query: &'a str
+    query: &'a str,
 }
 
 #[derive(Deserialize)]
 struct Gql {
-    data: IndexMap<String, serde_json::Map<String, serde_json::Value>>
+    data: IndexMap<String, serde_json::Map<String, serde_json::Value>>,
 }

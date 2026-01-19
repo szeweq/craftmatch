@@ -1,10 +1,15 @@
 use std::io::{Read, Seek, SeekFrom};
 
-use byteorder::{BE, ReadBytesExt};
+use byteorder::{ReadBytesExt, BE};
 use bytes::Bytes;
 
-use super::{idx::{ClassInfo, Index}, iter::MemberIter, jtype, pool::{ClassPool, PoolItem}, read_magic, skip_attr_info, skip_member_info, Attrs, JStr};
-
+use super::{
+    idx::{ClassInfo, Index},
+    iter::MemberIter,
+    jtype,
+    pool::{ClassPool, PoolItem},
+    read_magic, skip_attr_info, skip_member_info, Attrs, JStr,
+};
 
 pub struct JClassSeekReader<R: Read + Seek> {
     r: R,
@@ -18,7 +23,7 @@ pub struct JClassSeekReader<R: Read + Seek> {
     pos_fields: u64,
     pos_methods: u64,
     pos_attributes: u64,
-    end: u64
+    end: u64,
 }
 
 impl<R: Read + Seek> JClassSeekReader<R> {
@@ -27,21 +32,21 @@ impl<R: Read + Seek> JClassSeekReader<R> {
         let mut cv = [0u16; 3];
         let [minor, major, pool_count] = match r.read_u16_into::<BE>(&mut cv) {
             Ok(()) => cv,
-            Err(e) => return Err(e.into())
+            Err(e) => return Err(e.into()),
         };
         let mut pool = vec![PoolItem::None];
         while pool.len() < pool_count as usize {
             let tag = r.read_u8()?;
             pool.push(PoolItem::read_from(tag, major, &mut r)?);
             if tag == 5 || tag == 6 {
-                pool.push(PoolItem::Reserved)
+                pool.push(PoolItem::Reserved);
             }
         }
         let pool = ClassPool::from(pool.into_boxed_slice());
         let mut cv = [0u16; 3];
         let [access_flags, class_ref, super_ref] = match r.read_u16_into::<BE>(&mut cv) {
             Ok(()) => cv,
-            Err(e) => return Err(e.into())
+            Err(e) => return Err(e.into()),
         };
         let class_ref = class_ref.try_into()?;
         let super_ref = Index::maybe(super_ref);
@@ -70,7 +75,7 @@ impl<R: Read + Seek> JClassSeekReader<R> {
             pos_fields,
             pos_methods,
             pos_attributes,
-            end
+            end,
         })
     }
 
@@ -85,13 +90,14 @@ impl<R: Read + Seek> JClassSeekReader<R> {
         }
     }
 
-    pub fn interfaces(&mut self) -> anyhow::Result<impl Iterator<Item = anyhow::Result<&JStr>> + '_> {
+    pub fn interfaces(
+        &mut self,
+    ) -> anyhow::Result<impl Iterator<Item = anyhow::Result<&JStr>> + '_> {
         self.r.seek(SeekFrom::Start(self.pos_interfaces))?;
         let mut v = vec![0; self.r.read_u16::<BE>()? as usize];
         self.r.read_u16_into::<BE>(&mut v)?;
-        Ok(
-            v.into_iter().map(|x| self.pool.get(self.pool.get_::<ClassInfo>(x)?))
-        )
+        Ok(v.into_iter()
+            .map(|x| self.pool.get(self.pool.get_::<ClassInfo>(x)?)))
     }
     fn fill_data(&mut self, from: u64, to: u64) -> anyhow::Result<(u16, Bytes)> {
         self.r.seek(SeekFrom::Start(from))?;
